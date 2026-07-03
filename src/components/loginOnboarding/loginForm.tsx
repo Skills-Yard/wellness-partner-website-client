@@ -606,21 +606,20 @@ function LoginFormContent({
           style={{ background: "linear-gradient(179.82deg, #FDF7F2 0.16%, #FFFFFF 121.94%)" }}
         >
           {/* Partner earnings grid image */}
-          <div className="px-4 pt-5 pb-2">
+          <div className="flex justify-center px-4 pt-5 pb-2 ">
             <img
-              src="/images/"
+              src="/images/wellness-partners.png"
               alt="Vellora Partners"
-              className="w-full rounded-2xl drop-shadow-md"
+              className="w-full sm:w-[90%] rounded-2xl drop-shadow-md h-[300px]"
             />
           </div>
 
           {/* Money bag illustration */}
           <div className="flex justify-center pt-2 pb-1">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/images/vellora-money-bag.png"
               alt="Vellora earnings illustration"
-              className="w-36 h-36 object-contain"
+              className="w-36 h-25 object-contain"
             />
           </div>
 
