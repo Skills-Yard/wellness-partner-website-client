@@ -1,9 +1,9 @@
-import Image from "next/image";
+import DashboardContent from "../components/dashboard";
 
 export default function Home() {
   return (
-    <section className="">
-      
-    </section>
+    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
+      <DashboardContent/>
+    </div>
   );
 }
