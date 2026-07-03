@@ -2,8 +2,8 @@
 
 import React, { useState } from "react";
 import { DollarSign, Users, Activity } from "lucide-react";
-import Navbar from "./nav";
 import LoginForm from "./loginOnboarding/loginForm";
+import Navbar from "./home/navbar";
 
 // ==========================================
 // --- 3. DASHBOARD CONTENT COMPONENT ---
