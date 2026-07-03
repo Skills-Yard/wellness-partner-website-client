@@ -29,17 +29,7 @@ const cities = [
 
 type AuthStep = "PHONE" | "OTP" | "ONBOARDING" | "EARNINGS_PREVIEW" | "EARNINGS_DETAIL";
 
-const partners = [
-  { name: "Arjun", earning: "₹39,799", gender: "M", bg: "#EDE0D4" },
-  { name: "Priya", earning: "₹42,076", gender: "F", bg: "#D6CFC8" },
-  { name: "Rohit", earning: "₹38,454", gender: "M", bg: "#C9BDB5" },
-  { name: "Sneha", earning: "₹43,885", gender: "F", bg: "#EDE0D4" },
-  { name: "Vikram", earning: "₹38,983", gender: "M", bg: "#D4C5B5" },
-  { name: "Meera", earning: "₹34,060", gender: "F", bg: "#C9BDB5" },
-  { name: "Suresh", earning: "₹46,630", gender: "M", bg: "#D6CFC8" },
-  { name: "Kavya", earning: "₹35,200", gender: "F", bg: "#EDE0D4" },
-  { name: "Aditya", earning: "₹30,829", gender: "M", bg: "#C9BDB5" },
-];
+
 
 // ─── Phone icon illustration (golden phone on warm beige circle) ───────────
 function PhoneIconIllustration() {
@@ -255,9 +245,8 @@ function LoginFormContent({
               >
                 <span className="text-sm text-stone-700">{c}</span>
                 <div
-                  className={`h-5 w-5 rounded-full border-2 flex items-center justify-center transition-colors ${
-                    city === c ? "border-amber-500" : "border-stone-300"
-                  }`}
+                  className={`h-5 w-5 rounded-full border-2 flex items-center justify-center transition-colors ${city === c ? "border-amber-500" : "border-stone-300"
+                    }`}
                 >
                   {city === c && <div className="h-2.5 w-2.5 rounded-full bg-amber-500" />}
                 </div>
@@ -308,9 +297,8 @@ function LoginFormContent({
               >
                 <span className="text-sm text-stone-700">{p}</span>
                 <div
-                  className={`h-5 w-5 rounded-full border-2 flex items-center justify-center transition-colors ${
-                    profession === p ? "border-amber-500" : "border-stone-300"
-                  }`}
+                  className={`h-5 w-5 rounded-full border-2 flex items-center justify-center transition-colors ${profession === p ? "border-amber-500" : "border-stone-300"
+                    }`}
                 >
                   {profession === p && <div className="h-2.5 w-2.5 rounded-full bg-amber-500" />}
                 </div>
@@ -386,11 +374,10 @@ function LoginFormContent({
               onClick={handlePhoneSubmit}
               disabled={phone.length < 10}
               id="phone-continue-btn"
-              className={`w-full rounded-2xl py-4 text-base font-bold transition-all active:scale-[0.98] ${
-                phone.length >= 10
-                  ? "bg-stone-900 text-white hover:bg-stone-800 shadow-lg cursor-pointer"
-                  : "bg-stone-100 text-stone-300 cursor-not-allowed"
-              }`}
+              className={`w-full rounded-2xl py-4 text-base font-bold transition-all active:scale-[0.98] ${phone.length >= 10
+                ? "bg-stone-900 text-white hover:bg-stone-800 shadow-lg cursor-pointer"
+                : "bg-stone-100 text-stone-300 cursor-not-allowed"
+                }`}
             >
               Continue
             </button>
@@ -439,11 +426,10 @@ function LoginFormContent({
                   onChange={(e) => handleOtpChange(index, e.target.value)}
                   onKeyDown={(e) => handleOtpKeyDown(index, e)}
                   id={`otp-input-${index}`}
-                  className={`h-12 w-10 sm:h-14 sm:w-12 text-center text-lg font-bold rounded-xl border-2 outline-none transition-all bg-white cursor-text ${
-                    digit !== ""
-                      ? "border-stone-700 text-stone-900"
-                      : "border-stone-200 text-transparent"
-                  } focus:border-amber-500 focus:ring-2 focus:ring-amber-400/20`}
+                  className={`h-12 w-10 sm:h-14 sm:w-12 text-center text-lg font-bold rounded-xl border-2 outline-none transition-all bg-white cursor-text ${digit !== ""
+                    ? "border-stone-700 text-stone-900"
+                    : "border-stone-200 text-transparent"
+                    } focus:border-amber-500 focus:ring-2 focus:ring-amber-400/20`}
                 />
               ))}
             </div>
@@ -517,13 +503,12 @@ function LoginFormContent({
 
               {/* ── Name ── */}
               <div>
-                <p className="text-sm font-medium text-stone-700 mb-2">
+                <p className="text-sm font-bold text-stone-800 mb-2">
                   What&apos;s your name?
                 </p>
                 <div
-                  className={`rounded-xl border px-4 py-3.5 bg-stone-50 hover:bg-white focus-within:bg-white focus-within:border-amber-500 focus-within:ring-1 focus-within:ring-amber-400/30 transition-all ${
-                    hasSpecialChar ? "border-red-400" : name ? "border-stone-300" : "border-stone-200"
-                  }`}
+                  className={`rounded-xl border px-4 py-3.5 bg-[#F9F6F0] focus-within:bg-white focus-within:border-amber-500 transition-all ${hasSpecialChar ? "border-red-400" : name ? "border-stone-300" : "border-stone-200"
+                    }`}
                 >
                   <input
                     type="text"
@@ -534,21 +519,19 @@ function LoginFormContent({
                     autoFocus
                   />
                 </div>
-                {hasSpecialChar && (
-                  <p className="mt-1.5 ml-0.5 text-[11px] text-amber-500 font-medium">
-                    Special Characters like !@#$%^&amp;*()_-+=, are not allowed
-                  </p>
-                )}
+                <p className="mt-1.5 ml-0.5 text-[11px] text-[#C9851A] font-medium opacity-85">
+                  Special Characters like !@#$%^&amp;*()_-+=, are not allowed
+                </p>
               </div>
 
               {/* ── Work / Profession ── */}
               <div>
-                <p className="text-sm font-medium text-stone-700 mb-2">
+                <p className="text-sm font-bold text-stone-850 mb-2">
                   What work do you do?
                 </p>
                 <div
                   onClick={() => setShowWorkSelect(true)}
-                  className="flex items-center justify-between rounded-xl border border-stone-200 bg-stone-50 hover:bg-white hover:border-amber-400 px-4 py-3.5 cursor-pointer transition-all"
+                  className="flex items-center justify-between rounded-xl border border-stone-200 bg-[#F9F6F0] hover:bg-white hover:border-amber-400 px-4 py-3.5 cursor-pointer transition-all"
                 >
                   <span className={`text-sm ${profession ? "text-stone-900 font-medium" : "text-stone-400"}`}>
                     {profession || "Select work"}
@@ -559,12 +542,12 @@ function LoginFormContent({
 
               {/* ── City ── */}
               <div>
-                <p className="text-sm font-medium text-stone-700 mb-2">
+                <p className="text-sm font-bold text-stone-850 mb-2">
                   Where do you like?
                 </p>
                 <div
                   onClick={() => setShowCitySelect(true)}
-                  className="flex items-center justify-between rounded-xl border border-stone-200 bg-stone-50 hover:bg-white hover:border-amber-400 px-4 py-3.5 cursor-pointer transition-all"
+                  className="flex items-center justify-between rounded-xl border border-stone-200 bg-[#F9F6F0] hover:bg-white hover:border-amber-400 px-4 py-3.5 cursor-pointer transition-all"
                 >
                   <span className={`text-sm ${city ? "text-stone-900 font-medium" : "text-stone-400"}`}>
                     {city || "Select City"}
@@ -578,9 +561,8 @@ function LoginFormContent({
             {/* ── T&C checkbox ── */}
             <label className="flex items-start gap-3 cursor-pointer mt-6">
               <div
-                className={`mt-0.5 h-4 w-4 shrink-0 rounded border-2 flex items-center justify-center transition-colors cursor-pointer ${
-                  agreed ? "border-stone-900 bg-stone-900" : "border-stone-400"
-                }`}
+                className={`mt-0.5 h-4 w-4 shrink-0 rounded border-2 flex items-center justify-center transition-colors cursor-pointer ${agreed ? "border-stone-900 bg-stone-900" : "border-stone-400"
+                  }`}
                 onClick={() => setAgreed(!agreed)}
               >
                 {agreed && (
@@ -604,11 +586,10 @@ function LoginFormContent({
               onClick={handleComplete}
               disabled={!isFormValid}
               id="onboarding-continue-btn"
-              className={`w-full rounded-2xl py-4 font-bold text-base transition-all active:scale-[0.98] ${
-                isFormValid
-                  ? "bg-stone-900 text-white hover:bg-stone-800 shadow-lg cursor-pointer"
-                  : "bg-stone-100 text-stone-300 cursor-not-allowed"
-              }`}
+              className={`w-full rounded-2xl py-4 font-bold text-base transition-all active:scale-[0.98] ${isFormValid
+                ? "bg-stone-900 text-white hover:bg-stone-800 shadow-lg cursor-pointer"
+                : "bg-stone-100 text-stone-300 cursor-not-allowed"
+                }`}
             >
               Continue
             </button>
@@ -624,43 +605,13 @@ function LoginFormContent({
           className="flex flex-col flex-1 animate-in fade-in duration-300 overflow-y-auto"
           style={{ background: "linear-gradient(179.82deg, #FDF7F2 0.16%, #FFFFFF 121.94%)" }}
         >
-          {/* Partner earnings grid */}
+          {/* Partner earnings grid image */}
           <div className="px-4 pt-5 pb-2">
-            <div className="grid grid-cols-3 gap-2.5">
-              {partners.map((p, i) => (
-                <div
-                  key={i}
-                  className="rounded-2xl overflow-hidden flex flex-col items-center pb-2.5"
-                  style={{ background: p.bg }}
-                >
-                  {/* SVG Avatar */}
-                  <div className="w-full flex items-end justify-center" style={{ height: "90px" }}>
-                    <svg viewBox="0 0 80 90" width="80" height="90" xmlns="http://www.w3.org/2000/svg">
-                      <ellipse cx="40" cy="115" rx="30" ry="35" fill={p.gender === "F" ? "#3D2B1F" : "#6B4C3B"} />
-                      <rect x="33" y="55" width="14" height="16" rx="7" fill="#C68642" />
-                      <ellipse cx="40" cy="45" rx="18" ry="20" fill="#C68642" />
-                      {p.gender === "F" ? (
-                        <>
-                          <ellipse cx="40" cy="27" rx="18" ry="8" fill="#2D1B0E" />
-                          <ellipse cx="22" cy="45" rx="4" ry="12" fill="#2D1B0E" />
-                          <ellipse cx="58" cy="45" rx="4" ry="12" fill="#2D1B0E" />
-                        </>
-                      ) : (
-                        <ellipse cx="40" cy="28" rx="17" ry="7" fill="#2D1B0E" />
-                      )}
-                      <ellipse cx="33" cy="44" rx="2.5" ry="3" fill="#1A0F0A" />
-                      <ellipse cx="47" cy="44" rx="2.5" ry="3" fill="#1A0F0A" />
-                      <path d="M34 52 Q40 57 46 52" stroke="#7A3B1E" strokeWidth="1.5" fill="none" strokeLinecap="round" />
-                      <path d="M28 70 L40 64 L52 70" fill={p.gender === "F" ? "#3D2B1F" : "#8B6355"} />
-                    </svg>
-                  </div>
-                  {/* Earning badge */}
-                  <div className="mt-1.5 px-2 py-0.5 rounded-full" style={{ background: "rgba(0,0,0,0.10)" }}>
-                    <span className="text-[10px] font-bold text-stone-800">{p.earning}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <img
+              src="/images/"
+              alt="Vellora Partners"
+              className="w-full rounded-2xl drop-shadow-md"
+            />
           </div>
 
           {/* Money bag illustration */}
@@ -700,11 +651,11 @@ function LoginFormContent({
       ══════════════════════════════════════════════ */}
       {step === "EARNINGS_DETAIL" && (
         <div
-          className="flex flex-col flex-1 animate-in fade-in duration-300 overflow-y-auto"
+          className="flex flex-col flex-1 min-h-0 animate-in fade-in duration-300"
           style={{ background: "#FEFDFC" }}
         >
           {/* Back arrow */}
-          <div className="px-4 pt-5 pb-0 shrink-0">
+          <div className="px-4 pt-4 pb-0 shrink-0">
             <button
               onClick={() => setStep("EARNINGS_PREVIEW")}
               className="p-1.5 hover:bg-stone-100 rounded-full transition-colors cursor-pointer"
@@ -714,95 +665,102 @@ function LoginFormContent({
             </button>
           </div>
 
-          {/* Money bag illustration — large */}
-          <div className="flex justify-center pt-2 pb-4 shrink-0">
+          {/* Money bag illustration */}
+          <div className="flex justify-center pt-1 pb-2 shrink-0">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/images/vellora-money-bag.png"
               alt="Vellora earnings"
-              className="w-48 h-48 object-contain"
+              className="w-20 h-20 xs:w-24 xs:h-24 sm:w-28 sm:h-28 object-contain"
             />
           </div>
 
-          {/* Earning potential card */}
-          <div className="mx-5 rounded-2xl border border-stone-100 bg-white shadow-sm px-5 py-5 shrink-0">
-            <p className="text-sm font-semibold text-stone-700 mb-1 text-center">Your earning potential</p>
-            <p
-              className="text-[44px] font-extrabold text-center leading-tight transition-all duration-300"
-              style={{ color: "#C9851A" }}
-            >
-              {earningMap[workHours]}
-            </p>
-            <div className="flex justify-center mt-2 mb-3">
-              <span
-                className="text-xs font-semibold px-5 py-1.5 rounded-full"
-                style={{ background: "#F5EDD8", color: "#9B6B0E" }}
+          {/* Scrollable middle area so short/landscape screens don't clip content */}
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            {/* Earning potential card */}
+            <div className="mx-4 rounded-2xl border border-stone-100 bg-white shadow-sm px-4 py-3 sm:py-3.5">
+              <p className="text-xs font-semibold text-stone-700 mb-1 text-center">
+                Your earning potential
+              </p>
+              <p
+                className="font-extrabold text-center leading-tight transition-all duration-300"
+                style={{
+                  color: "#C9851A",
+                  fontSize: "clamp(1.5rem, 6vw, 1.875rem)", // scales on narrow screens instead of fixed text-3xl
+                }}
               >
-                Per month
-              </span>
-            </div>
-            <p className="text-xs text-stone-400 text-center leading-relaxed">
-              Based on your availability &amp;<br />completed services
-            </p>
-          </div>
-
-          {/* Work hours selector */}
-          <div className="mx-5 mt-5 shrink-0">
-            <div className="flex items-center gap-3 mb-4">
-              <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                style={{ background: "#FDF3E7" }}
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C9851A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="4" width="18" height="18" rx="2" />
-                  <line x1="16" y1="2" x2="16" y2="6" />
-                  <line x1="8" y1="2" x2="8" y2="6" />
-                  <line x1="3" y1="10" x2="21" y2="10" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm font-bold text-stone-900">Work Hours</p>
-                <p className="text-xs text-stone-400 mt-0.5">Choose your daily availability</p>
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              {[4, 6, 8].map((h) => (
-                <button
-                  key={h}
-                  onClick={() => setWorkHours(h)}
-                  className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all active:scale-95 cursor-pointer ${
-                    workHours === h
-                      ? "bg-stone-900 text-white shadow-md"
-                      : "bg-stone-100 text-stone-600 hover:bg-stone-200"
-                  }`}
+                {earningMap[workHours]}
+              </p>
+              <div className="flex justify-center mt-1.5 mb-2">
+                <span
+                  className="text-[11px] font-semibold px-4 py-1 rounded-full"
+                  style={{ background: "#F5EDD8", color: "#9B6B0E" }}
                 >
-                  {h} hrs
-                </button>
-              ))}
+                  Per month
+                </span>
+              </div>
+              <p className="text-[11px] text-stone-400 text-center leading-relaxed px-2">
+                Based on your availability &amp; completed services
+              </p>
+            </div>
+
+            {/* Work hours selector card */}
+            <div className="mx-4 mt-3 p-3.5 rounded-2xl border border-stone-100 bg-white shadow-sm">
+              <div className="flex items-center gap-2.5 mb-3">
+                <div
+                  className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ background: "#FDF3E7" }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C9851A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" />
+                    <line x1="16" y1="2" x2="16" y2="6" />
+                    <line x1="8" y1="2" x2="8" y2="6" />
+                    <line x1="3" y1="10" x2="21" y2="10" />
+                    <circle cx="16" cy="16" r="3" stroke="#C9851A" strokeWidth="1.8" />
+                  </svg>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-stone-850 truncate">Work Hours</p>
+                  <p className="text-[11px] text-stone-400 mt-0.5 truncate">Choose your daily availability</p>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                {[4, 6, 8].map((h) => (
+                  <button
+                    key={h}
+                    onClick={() => setWorkHours(h)}
+                    className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all active:scale-95 cursor-pointer whitespace-nowrap ${workHours === h
+                      ? "bg-[#0D0D0D] text-white shadow-md"
+                      : "bg-[#F9F6F0] text-stone-700 hover:bg-stone-100"
+                      }`}
+                  >
+                    {h} hrs
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
-          <div className="flex-1" />
-
-          {/* Get started CTA */}
-          <div className="px-5 pb-10 pt-4 shrink-0">
+          {/* Get started CTA — safe-area aware so it clears the home indicator */}
+          <div
+            className="px-4 pt-4 shrink-0"
+            style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}
+          >
             <button
               onClick={handleFinalComplete}
               id="final-continue-btn"
-              className="w-full rounded-2xl py-4 font-bold text-base bg-stone-900 text-white hover:bg-stone-800 shadow-lg cursor-pointer transition-all active:scale-[0.98]"
+              className="w-full rounded-2xl py-3.5 font-bold text-sm bg-stone-900 text-white hover:bg-stone-800 shadow-lg cursor-pointer transition-all active:scale-[0.98]"
             >
               Get started
             </button>
           </div>
         </div>
       )}
-
       {/* ── Floating Notification ────────────────────────────────────── */}
       <div
-        className={`absolute left-1/2 z-[60] w-[90%] max-w-xs -translate-x-1/2 rounded-2xl bg-stone-900 p-3.5 text-white shadow-2xl transition-all duration-500 ${
-          notification.visible ? "bottom-6 opacity-100" : "-bottom-full opacity-0"
-        }`}
+        className={`absolute left-1/2 z-[60] w-[90%] max-w-xs -translate-x-1/2 rounded-2xl bg-stone-900 p-3.5 text-white shadow-2xl transition-all duration-500 ${notification.visible ? "bottom-6 opacity-100" : "-bottom-full opacity-0"
+          }`}
       >
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-500">

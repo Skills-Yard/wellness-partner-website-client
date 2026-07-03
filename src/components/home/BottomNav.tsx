@@ -1,6 +1,7 @@
 'use client';
 
 import React from "react";
+import { Home, IndianRupee, User } from "lucide-react";
 
 interface BottomNavProps {
   active?: "home" | "money" | "profile";
@@ -9,103 +10,60 @@ interface BottomNavProps {
 
 export default function BottomNav({ active = "home", onNavigate }: BottomNavProps) {
   const tabs = [
-    {
-      key: "home" as const,
-      label: "Home",
-      icon: (isActive: boolean) => (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-          <path
-            d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H5a1 1 0 01-1-1V9.5z"
-            fill={isActive ? "#C9851A" : "none"}
-            stroke={isActive ? "#C9851A" : "#9CA3AF"}
-            strokeWidth="1.8"
-            strokeLinejoin="round"
-          />
-          <path
-            d="M9 21V12h6v9"
-            stroke={isActive ? "#C9851A" : "#9CA3AF"}
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      ),
-    },
-    {
-      key: "money" as const,
-      label: "Money",
-      icon: (isActive: boolean) => (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-          <circle
-            cx="12"
-            cy="12"
-            r="9"
-            stroke={isActive ? "#C9851A" : "#9CA3AF"}
-            strokeWidth="1.8"
-          />
-          <text
-            x="12"
-            y="16.5"
-            textAnchor="middle"
-            fontSize="11"
-            fontWeight="700"
-            fill={isActive ? "#C9851A" : "#9CA3AF"}
-            fontFamily="sans-serif"
-          >
-            ₹
-          </text>
-        </svg>
-      ),
-    },
-    {
-      key: "profile" as const,
-      label: "Profile",
-      icon: (isActive: boolean) => (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-          <circle
-            cx="12"
-            cy="8"
-            r="4"
-            fill={isActive ? "#C9851A" : "none"}
-            stroke={isActive ? "#C9851A" : "#9CA3AF"}
-            strokeWidth="1.8"
-          />
-          <path
-            d="M4 20c0-4 3.582-7 8-7s8 3 8 7"
-            stroke={isActive ? "#C9851A" : "#9CA3AF"}
-            strokeWidth="1.8"
-            strokeLinecap="round"
-          />
-        </svg>
-      ),
-    },
+    { key: "home" as const, label: "Home", Icon: Home },
+    { key: "money" as const, label: "Money", Icon: IndianRupee },
+    { key: "profile" as const, label: "Profile", Icon: User },
   ];
 
   return (
     <div
-      className="sticky bottom-0 z-50 w-full flex items-center justify-around border-t"
+      className="fixed left-1/2 -translate-x-1/2 z-50 w-[calc(100%-1.5rem)] sm:w-[calc(100%-2rem)] max-w-full sm:max-w-sm md:max-w-md flex lg:hidden items-center justify-around border"
       style={{
-        background: "#FFFFFF",
-        borderTopColor: "#F1F0EE",
-        paddingTop: "10px",
-        paddingBottom: "max(20px, env(safe-area-inset-bottom))",
-        boxShadow: "0 -4px 20px rgba(0,0,0,0.06)",
+        bottom: "max(1rem, env(safe-area-inset-bottom))",
+        background: "rgba(255, 255, 255, 0.96)",
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
+        borderColor: "#EBEAE6",
+        borderRadius: "28px",
+        paddingTop: "8px",
+        paddingBottom: "8px",
+        boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
       }}
     >
-      {tabs.map((tab) => {
-        const isActive = active === tab.key;
+      {tabs.map(({ key, label, Icon }) => {
+        const isActive = active === key;
         return (
           <button
-            key={tab.key}
-            onClick={() => onNavigate?.(tab.key)}
-            className="flex flex-col items-center gap-1 px-6 cursor-pointer transition-all active:scale-95"
+            key={key}
+            onClick={() => onNavigate?.(key)}
+            className="flex flex-col items-center gap-1 sm:gap-1.5 px-3 sm:px-4 md:px-5 cursor-pointer transition-all active:scale-95"
           >
-            {tab.icon(isActive)}
+            <Icon
+              size={20}
+              className="sm:hidden"
+              strokeWidth={isActive ? 2.2 : 1.8}
+              color={isActive ? "#C9851A" : "#9CA3AF"}
+              fill={isActive ? "#C9851A" : "none"}
+            />
+            <Icon
+              size={22}
+              className="hidden sm:block md:hidden"
+              strokeWidth={isActive ? 2.2 : 1.8}
+              color={isActive ? "#C9851A" : "#9CA3AF"}
+              fill={isActive ? "#C9851A" : "none"}
+            />
+            <Icon
+              size={24}
+              className="hidden md:block"
+              strokeWidth={isActive ? 2.2 : 1.8}
+              color={isActive ? "#C9851A" : "#9CA3AF"}
+              fill={isActive ? "#C9851A" : "none"}
+            />
             <span
-              className="text-[10px] font-semibold"
-              style={{ color: isActive ? "#C9851A" : "#9CA3AF" }}
+              className="text-[9px] sm:text-[10px] md:text-[11px] font-bold tracking-wide"
+              style={{ color: isActive ? "#C9851A" : "#A8A29E" }}
             >
-              {tab.label}
+              {label}
             </span>
           </button>
         );

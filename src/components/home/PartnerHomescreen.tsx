@@ -1,127 +1,88 @@
-'use client';
+"use client";
 
 import React, { useState } from "react";
-import { Video, ChevronRight, Bell, User } from "lucide-react";
+import { Video, ChevronRight } from "lucide-react";
 import BottomNav from "./BottomNav";
+import DesktopNav from "./DesktopNav";
+import HeroBanner from "./HeroBanner";
+import ProfilePage from "./ProfilePage";
+import MoneyPage from "./MoneyPage";
 
-// ─── Hero Banner — full-width, responsive height ──────────────────────────────
-function HeroBanner() {
-  return (
-    <div
-      className="relative w-full overflow-hidden"
-      style={{ background: "linear-gradient(135deg, #8B5E1A 0%, #C9851A 50%, #E8A830 100%)" }}
-    >
-      {/* Decorative blobs */}
-      <div className="absolute -right-12 -top-12 w-72 h-72 rounded-full opacity-20" style={{ background: "#F5A623" }} />
-      <div className="absolute -left-8 bottom-0 w-48 h-48 rounded-full opacity-10" style={{ background: "#fff" }} />
-
-      <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-8">
-        {/* Top bar */}
-        <div className="flex items-center justify-between py-4 sm:py-5">
-          <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center cursor-pointer hover:bg-white/30 transition-colors">
-            <User className="h-4 w-4 text-white" />
-          </div>
-          {/* Logo */}
-          <div className="flex flex-col items-center">
-            <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-              <path d="M14 2C14 2 8 8 8 14c0 3.314 2.686 6 6 6s6-2.686 6-6c0-6-6-12-6-12Z" fill="#fff" fillOpacity="0.9" />
-              <path d="M14 8C14 8 10 12 10 15.5c0 2.21 1.79 4 4 4s4-1.79 4-4C18 12 14 8 14 8Z" fill="#C9851A" />
-            </svg>
-            <span className="text-white font-bold text-xs tracking-[0.15em] mt-0.5">VELLORA</span>
-          </div>
-          <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center cursor-pointer hover:bg-white/30 transition-colors">
-            <Bell className="h-4 w-4 text-white" />
-          </div>
-        </div>
-
-        {/* Hero content */}
-        <div className="flex items-end justify-between pb-5 gap-4">
-          <div className="flex-1">
-            <p className="text-xs sm:text-sm font-bold tracking-wide mb-1" style={{ color: "#FFD580" }}>Be Your Own Boss</p>
-            <p className="text-sm sm:text-base font-semibold text-white/80">Earn upto</p>
-            <p className="text-4xl sm:text-5xl font-extrabold leading-none mb-2" style={{ color: "#FFD580" }}>₹70,000</p>
-            <p className="text-xs sm:text-sm text-white/75 leading-relaxed max-w-xs">
-              Join 7,000+ partners across 55+ cities in India.
-            </p>
-          </div>
-          {/* Couple illustration */}
-          <div className="shrink-0 hidden sm:block relative" style={{ width: "150px", height: "160px" }}>
-            <svg width="75" height="150" viewBox="0 0 65 140" className="absolute right-0 bottom-0">
-              <rect x="15" y="70" width="35" height="65" rx="8" fill="#D4C4A8" />
-              <rect x="27" y="55" width="11" height="18" rx="5.5" fill="#C68642" />
-              <ellipse cx="32" cy="44" rx="16" ry="18" fill="#C68642" />
-              <ellipse cx="32" cy="28" rx="15" ry="7" fill="#1A0A00" />
-              <ellipse cx="26" cy="42" rx="2" ry="2.5" fill="#1A0A00" />
-              <ellipse cx="38" cy="42" rx="2" ry="2.5" fill="#1A0A00" />
-              <path d="M27 50 Q32 54 37 50" stroke="#7A3B1E" strokeWidth="1.2" fill="none" strokeLinecap="round" />
-              <path d="M22 72 L32 65 L42 72" fill="#BCA888" />
-            </svg>
-            <svg width="75" height="145" viewBox="0 0 65 135" className="absolute left-0 bottom-0" style={{ zIndex: 1 }}>
-              <rect x="14" y="68" width="36" height="50" rx="8" fill="#D4C4A8" />
-              <rect x="27" y="53" width="11" height="18" rx="5.5" fill="#C68642" />
-              <ellipse cx="32" cy="42" rx="15" ry="17" fill="#C68642" />
-              <ellipse cx="32" cy="27" rx="15" ry="7" fill="#1A0A00" />
-              <ellipse cx="18" cy="42" rx="4" ry="11" fill="#1A0A00" />
-              <ellipse cx="46" cy="42" rx="4" ry="11" fill="#1A0A00" />
-              <ellipse cx="26" cy="41" rx="2" ry="2.5" fill="#1A0A00" />
-              <ellipse cx="38" cy="41" rx="2" ry="2.5" fill="#1A0A00" />
-              <path d="M27 49 Q32 53 37 49" stroke="#7A3B1E" strokeWidth="1.2" fill="none" strokeLinecap="round" />
-              <path d="M20 70 L32 63 L44 70" fill="#BCA888" />
-            </svg>
-          </div>
-        </div>
-
-        {/* Stat pills */}
-        <div className="flex flex-wrap gap-2 sm:gap-3 pb-5">
-          {[
-            { icon: "👥", label: "7,000+ Partners" },
-            { icon: "🏙️", label: "55+ Cities" },
-            { icon: "📈", label: "₹70K/mo" },
-          ].map((s, i) => (
-            <div key={i} className="flex items-center gap-1.5 bg-white/15 rounded-full px-3 py-1.5">
-              <span className="text-sm">{s.icon}</span>
-              <span className="text-xs font-semibold text-white">{s.label}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
+interface PartnerHomescreenProps {
+  city: string;
+  profession: string;
+  onLogout: () => void;
 }
 
-// ─── Step icon ────────────────────────────────────────────────────────────────
+
+
 function StepIcon({ type, active }: { type: string; active: boolean }) {
-  const bg = active ? "#C9851A" : "#F5EDD8";
-  const fg = active ? "#fff" : "#C9851A";
+  const bg = active ? "#FDF3E7" : "#F8F6F2";
+  const borderCol = active ? "#C9851A" : "#E5E1DA";
+  const fg = active ? "#C9851A" : "#A39E93";
+
   const icons: Record<string, React.ReactNode> = {
     session: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-        <rect x="3" y="5" width="18" height="14" rx="2" fill={fg} />
-        <rect x="7" y="9" width="10" height="1.5" rx="0.75" fill={bg} />
-        <rect x="7" y="12" width="6" height="1.5" rx="0.75" fill={bg} />
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        {/* Two people heads */}
+        <circle cx="8" cy="9" r="3" fill={fg} fillOpacity={active ? 1 : 0.7} />
+        <path d="M3 17c0-2.5 2-4 5-4s5 1.5 5 4v1H3v-1Z" fill={fg} fillOpacity={active ? 1 : 0.7} />
+        <circle cx="16" cy="10" r="2.5" fill={fg} fillOpacity={active ? 0.8 : 0.5} />
+        <path d="M12 17c0-2 1.5-3 4-3s4 1 4 3v1h-8v-1Z" fill={fg} fillOpacity={active ? 0.8 : 0.5} />
+        {/* Chat bubble */}
+        <path d="M10.5 4.5a2 2 0 0 1 3.5 0l.5.8a1 1 0 0 0 .8.5h.7a2 2 0 0 1 0 4h-.7a1 1 0 0 0-.8.5l-.5.8a2 2 0 0 1-3.5 0l-.5-.8a1 1 0 0 0-.8-.5H8a2 2 0 0 1 0-4h.7a1 1 0 0 0 .8-.5l.5-.8Z" fill="#C9851A" fillOpacity={active ? 0.85 : 0.3} />
+        <circle cx="10" cy="6.5" r="0.75" fill="#FFF" fillOpacity={active ? 1 : 0.4} />
+        <circle cx="12" cy="6.5" r="0.75" fill="#FFF" fillOpacity={active ? 1 : 0.4} />
+        <circle cx="14" cy="6.5" r="0.75" fill="#FFF" fillOpacity={active ? 1 : 0.4} />
       </svg>
     ),
     starterkit: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-        <path d="M5 8h14l-1.5 9H6.5L5 8Z" fill={fg} />
-        <path d="M9 8V6a3 3 0 016 0v2" stroke={fg} strokeWidth="1.5" fill="none" strokeLinecap="round" />
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        {/* Open box */}
+        <path d="M4 9l8-4 8 4-8 4-8-4Z" fill={fg} fillOpacity={active ? 0.7 : 0.4} />
+        <path d="M4 9v7.5l8 4.5v-8L4 9Z" fill={fg} fillOpacity={active ? 0.95 : 0.6} />
+        <path d="M20 9v7.5l-8 4.5v-8l8-4Z" fill={fg} fillOpacity={active ? 0.85 : 0.5} />
+        {/* Box flap left */}
+        <path d="M4 9l8 4v-2.5L5.5 7.5 4 9Z" fill={active ? "#DDA15E" : fg} fillOpacity={active ? 0.8 : 0.4} />
+        {/* Box flap right */}
+        <path d="M20 9l-8 4v-2.5l6.5-3 1.5 1.5Z" fill={active ? "#DDA15E" : fg} fillOpacity={active ? 0.8 : 0.4} />
+        {/* Content peaking out */}
+        <rect x="9" y="8" width="6" height="3" rx="0.5" fill={active ? "#C9851A" : fg} />
       </svg>
     ),
     profile: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-        <circle cx="12" cy="8" r="4" fill={fg} />
-        <path d="M4 20c0-4 3.582-7 8-7s8 3 8 7" stroke={fg} strokeWidth="1.5" fill="none" strokeLinecap="round" />
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        {/* Document/Resume card */}
+        <rect x="5" y="4" width="14" height="16" rx="2" fill={fg} fillOpacity={active ? 0.7 : 0.4} stroke={fg} strokeWidth="1" />
+        <line x1="8" y1="8" x2="16" y2="8" stroke={active ? "#FEFDFC" : "#F4F3F0"} strokeWidth="1.8" strokeLinecap="round" />
+        <line x1="8" y1="12" x2="14" y2="12" stroke={active ? "#FEFDFC" : "#F4F3F0"} strokeWidth="1.8" strokeLinecap="round" />
+        <line x1="8" y1="16" x2="12" y2="16" stroke={active ? "#FEFDFC" : "#F4F3F0"} strokeWidth="1.8" strokeLinecap="round" />
+        {/* Checkmark circle */}
+        <circle cx="17" cy="16" r="4.5" fill={active ? "#C9851A" : "#A39E93"} stroke="#FFF" strokeWidth="1" />
+        <path d="M15 16l1.5 1.5L19 14.5" stroke="#FFF" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
       </svg>
     ),
     training: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-        <path d="M12 3L2 8l10 5 10-5-10-5Z" fill={fg} />
-        <path d="M2 12l10 5 10-5M2 16l10 5 10-5" stroke={fg} strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        {/* Graduation cap */}
+        <path d="M12 3L2 8l10 5 10-5-10-5Z" fill={fg} stroke={fg} strokeWidth="0.8" />
+        <path d="M6 10.5v4c0 2 2.5 3.5 6 3.5s6-1.5 6-3.5v-4" fill={fg} fillOpacity={active ? 0.8 : 0.5} />
+        {/* Tassel */}
+        <path d="M19 8v4.5M19 12.5a1 1 0 1 0 0 2 1 1 0 0 0 0-2Z" stroke={active ? "#C9851A" : fg} strokeWidth="1.2" />
+        {/* Books stack behind */}
+        <rect x="9" y="16.5" width="6" height="1.5" rx="0.5" fill={fg} fillOpacity={0.6} />
       </svg>
     ),
   };
   return (
-    <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shrink-0" style={{ background: bg }}>
+    <div
+      className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 border-2 transition-all duration-300"
+      style={{
+        background: bg,
+        borderColor: borderCol,
+        boxShadow: active ? "0 4px 10px rgba(201, 133, 26, 0.15)" : "none"
+      }}
+    >
       {icons[type]}
     </div>
   );
@@ -130,17 +91,12 @@ function StepIcon({ type, active }: { type: string; active: boolean }) {
 // ─── Session thumbnail ────────────────────────────────────────────────────────
 function SessionThumb() {
   return (
-    <div className="w-16 h-16 sm:w-[72px] sm:h-[72px] rounded-xl shrink-0 flex items-center justify-center overflow-hidden"
-      style={{ background: "linear-gradient(135deg, #EDE0D4 0%, #C9BDB5 100%)" }}>
-      <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
-        <ellipse cx="18" cy="22" rx="11" ry="7" fill="#A0856A" />
-        <ellipse cx="18" cy="20" rx="11" ry="7" fill="#B8967A" />
-        <rect x="9" y="11" width="18" height="5" rx="2.5" fill="#8B6E4E" />
-        <rect x="11" y="11" width="2" height="5" fill="#7A5E3F" />
-        <rect x="16" y="11" width="2" height="5" fill="#7A5E3F" />
-        <rect x="21" y="11" width="2" height="5" fill="#7A5E3F" />
-        <path d="M25 9 Q29 7 31 11 Q27 13 25 9Z" fill="#6B8C3A" />
-      </svg>
+    <div className="w-16 h-16 rounded-xl shrink-0 overflow-hidden relative shadow-sm border border-stone-100">
+      <img
+        src="/images/wood_blocks_thumbnail.png"
+        alt="Stage Thumbnail"
+        className="w-full h-full object-cover"
+      />
     </div>
   );
 }
@@ -149,15 +105,33 @@ function AboutCard({ title }: { title: string }) {
   return (
     <div className="flex items-center gap-4 bg-white rounded-2xl border border-stone-100 shadow-sm p-3 sm:p-4 cursor-pointer hover:shadow-md transition-shadow">
       <SessionThumb />
-      <p className="flex-1 text-sm sm:text-base font-semibold text-stone-800">{title}</p>
-      <ChevronRight className="h-5 w-5 text-stone-400 shrink-0" />
+      <p className="flex-1 text-sm sm:text-base font-semibold text-stone-850">
+        {title}
+      </p>
+      <ChevronRight className="h-5 w-5 text-stone-450 shrink-0" />
     </div>
   );
 }
 
 // ─── Main Export ──────────────────────────────────────────────────────────────
-export default function PartnerHomescreen() {
+export default function PartnerHomescreen({ city, profession, onLogout }: PartnerHomescreenProps) {
   const [activeTab, setActiveTab] = useState<"home" | "money" | "profile">("home");
+
+  if (activeTab === "profile") {
+    return (
+      <ProfilePage
+        city={city}
+        profession={profession}
+        onLogout={onLogout}
+        activeTab={activeTab}
+        onNavigate={setActiveTab}
+      />
+    );
+  }
+
+  if (activeTab === "money") {
+    return <MoneyPage activeTab={activeTab} onNavigate={setActiveTab} />;
+  }
   const steps = [
     { key: "session", label: "Session" },
     { key: "starterkit", label: "Starter kit" },
@@ -166,77 +140,122 @@ export default function PartnerHomescreen() {
   ];
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
+    <div className="min-h-screen bg-white flex flex-col pb-28 lg:pb-0">
+      <DesktopNav active={activeTab} onNavigate={setActiveTab} />
       <HeroBanner />
 
       {/* Body content — responsive max-width container */}
       <div className="flex-1 w-full max-w-4xl mx-auto px-4 sm:px-8 py-6 flex flex-col gap-6">
 
         {/* Desktop: 2-col grid | Mobile: single col */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
 
-          {/* ── Trainer Card ──────────────────────────────────────── */}
-          <div className="bg-white rounded-2xl border border-stone-100 shadow-sm px-5 py-5">
-            <h2 className="text-lg sm:text-xl font-extrabold text-stone-900 leading-snug mb-1">
-              You&apos;ve been selected to meet our trainer
-            </h2>
-            <p className="text-sm text-stone-400 mb-5">
-              We will know more about your work experience
-            </p>
+          {/* ── Trainer Card (Left on Desktop) ───────────────────── */}
+          <div className="lg:col-span-7 bg-white rounded-2xl lg:rounded-3xl border border-stone-100 shadow-sm hover:shadow-md transition-shadow px-5 py-5 lg:p-8 flex flex-col justify-center relative overflow-hidden">
+            {/* Decorative background element for desktop */}
+            <div className="hidden lg:block absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-[#FDF3E7] to-transparent rounded-full -translate-y-1/2 translate-x-1/4 opacity-60 pointer-events-none" />
 
-            {/* Progress steps */}
-            <div className="relative flex items-start justify-between mb-5">
-              <div className="absolute top-5 sm:top-6 left-5 sm:left-6 right-5 sm:right-6 h-[2px]"
-                style={{ background: "linear-gradient(90deg, #C9851A 25%, #E8D5B0 25%)" }} />
-              {steps.map((s, i) => (
-                <div key={i} className="flex flex-col items-center gap-1.5 relative z-10 flex-1">
-                  <StepIcon type={s.key} active={i === 0} />
-                  <span className="text-[10px] sm:text-xs font-semibold text-center leading-tight"
-                    style={{ color: i === 0 ? "#C9851A" : "#78716C" }}>
-                    {s.label}
+            <div className="relative z-10">
+              <h2 className="text-lg lg:text-3xl font-extrabold text-stone-900 leading-snug mb-1 lg:mb-3">
+                You've been selected to meet our trainer
+              </h2>
+              <p className="text-sm lg:text-base text-stone-450 mb-5 lg:mb-8">
+                We will know more about your work experience
+              </p>
+
+              {/* Progress steps */}
+              <div className="relative flex items-start justify-between mb-5 lg:mb-10">
+                <div
+                  className="absolute top-5 lg:top-6 left-5 lg:left-8 right-5 lg:right-8 h-[2px] lg:h-[3px] rounded-full"
+                  style={{
+                    background:
+                      "linear-gradient(90deg, #C9851A 25%, #E8D5B0 25%)",
+                  }}
+                />
+                {steps.map((s, i) => (
+                  <div
+                    key={i}
+                    className="flex flex-col items-center gap-1.5 relative z-10 flex-1"
+                  >
+                    <div className="lg:scale-125 lg:mb-2 transition-transform origin-top">
+                      <StepIcon type={s.key} active={i === 0} />
+                    </div>
+                    <span
+                      className="text-[10px] lg:text-sm font-semibold text-center leading-tight lg:mt-1 animate-pulse"
+                      style={{ color: i === 0 ? "#C9851A" : "#78716C" }}
+                    >
+                      {s.label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Combined Date & Video Call Card */}
+              <div className="rounded-2xl border border-[#FDF8F3] bg-[#FEFDFC]/60 p-1 flex flex-col shadow-sm">
+                <div className="flex items-center gap-3.5 px-4 py-3">
+                  <div className="w-9 h-9 rounded-full bg-[#FDF3E7] flex items-center justify-center shrink-0 text-[#C9851A]">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="4" width="18" height="18" rx="2" />
+                      <path d="M16 2v4M8 2v4M3 10h18" />
+                    </svg>
+                  </div>
+                  <span className="text-sm font-bold text-stone-850">
+                    3 July, 11 AM
                   </span>
                 </div>
-              ))}
-            </div>
 
-            {/* Date */}
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-base">👋</span>
-              <span className="text-sm font-semibold text-stone-800">3 July, 11 AM</span>
-            </div>
+                <div className="h-[1px] bg-stone-100/60 mx-4" />
 
-            {/* Video Call */}
-            <div className="flex items-center gap-3 rounded-xl border border-stone-100 bg-stone-50 px-4 py-3 cursor-pointer hover:bg-stone-100 transition-colors">
-              <div className="w-8 h-8 rounded-full bg-stone-200 flex items-center justify-center shrink-0">
-                <Video className="h-4 w-4 text-stone-600" />
+                <div className="flex items-center gap-3.5 px-4 py-3 cursor-pointer hover:bg-stone-50/50 transition-colors rounded-b-2xl">
+                  <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-full bg-[#FDF3E7] flex items-center justify-center shrink-0 text-[#C9851A]">
+                    <Video className="h-4.5 w-4.5 lg:h-5 lg:w-5" />
+                  </div>
+                  <span className="text-sm lg:text-base font-bold text-stone-850 flex-1">
+                    Video Call
+                  </span>
+                  <ChevronRight className="h-4.5 w-4.5 lg:h-5 lg:w-5 text-stone-400" />
+                </div>
               </div>
-              <span className="text-sm font-medium text-stone-700 flex-1">Video Call</span>
-              <ChevronRight className="h-4 w-4 text-stone-400" />
             </div>
           </div>
 
-          {/* ── Earning Teaser ─────────────────────────────────────── */}
-          <div className="rounded-2xl px-5 py-5 flex items-center justify-between"
-            style={{ background: "linear-gradient(135deg, #FDF7F2 0%, #F5EDD8 100%)" }}>
-            <div>
-              <p className="text-sm text-stone-500 mb-1">Your earning potential</p>
-              <p className="text-4xl sm:text-5xl font-extrabold" style={{ color: "#C9851A" }}>₹47,199</p>
-              <p className="text-xs text-stone-400 mt-1">per month · 8 hrs/day</p>
+          {/* ── Welcome Banner (Right on Desktop) ────────────────── */}
+          <div className="hidden lg:flex lg:col-span-5 bg-[#1C1917] rounded-3xl p-8 flex-col justify-between relative overflow-hidden shadow-xl text-white">
+            <div className="absolute top-0 right-0 w-48 h-48 bg-[#C9851A] rounded-full filter blur-[80px] opacity-30 -translate-y-1/2 translate-x-1/2" />
+            <div className="absolute bottom-0 left-0 w-64 h-64 bg-[#C9851A] rounded-full filter blur-[100px] opacity-20 translate-y-1/2 -translate-x-1/4" />
+
+            <div className="relative z-10">
+              <h3 className="text-2xl lg:text-3xl font-black mb-4 leading-tight">
+                Ready to start your<br />journey with us?
+              </h3>
+              <p className="text-stone-300 text-sm lg:text-base leading-relaxed mb-6">
+                Complete your sessions and training to get access to top clients in {city} as a {profession}.
+              </p>
             </div>
-            <div className="w-16 h-16 rounded-full flex items-center justify-center shrink-0" style={{ background: "#C9851A" }}>
-              <svg width="32" height="32" viewBox="0 0 28 28" fill="none">
-                <circle cx="14" cy="14" r="10" fill="#fff" fillOpacity="0.2" />
-                <path d="M14 8v8M14 8l-3 3M14 8l3 3" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M8 20h12" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
-              </svg>
+
+            <div className="relative z-10 bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-5 lg:p-6 mt-auto">
+              <div className="flex items-center gap-3 mb-2 lg:mb-3">
+                <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-full bg-[#C9851A] flex items-center justify-center text-white shrink-0">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="lg:scale-125"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>
+                </div>
+                <span className="font-bold text-lg lg:text-xl">Next Step</span>
+              </div>
+              <p className="text-stone-200 text-sm lg:text-base pl-11 lg:pl-13">
+                Attend your video call with our expert trainer to proceed.
+              </p>
             </div>
           </div>
+
         </div>
 
+
+
         {/* ── About This Stage ─────────────────────────────────────── */}
-        <div>
-          <h3 className="text-lg sm:text-xl font-extrabold text-stone-900 mb-4">About this stage</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+        <div className="lg:mt-4">
+          <h3 className="text-lg sm:text-xl lg:text-2xl font-extrabold text-stone-900 mb-4 lg:mb-6">
+            About this stage
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
             <AboutCard title="What is skill session?" />
             <AboutCard title="How to prepare?" />
             <AboutCard title="How to attend the session?" />
@@ -244,9 +263,11 @@ export default function PartnerHomescreen() {
         </div>
 
         {/* ── CTA ──────────────────────────────────────────────────── */}
-        <button className="w-full sm:max-w-xs rounded-2xl py-4 font-bold text-base bg-stone-900 text-white hover:bg-stone-800 shadow-lg transition-all active:scale-[0.98] cursor-pointer">
-          Join session now
-        </button>
+        {/* <div className="lg:mt-6 lg:mb-10">
+          <button className="w-full sm:max-w-xs lg:max-w-sm rounded-2xl py-4 lg:py-5 font-bold text-base lg:text-lg bg-stone-900 text-white hover:bg-stone-800 hover:shadow-xl shadow-lg transition-all active:scale-[0.98] cursor-pointer">
+            Join session now
+          </button>
+        </div> */}
       </div>
 
       {/* Bottom Nav */}
