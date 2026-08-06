@@ -8,7 +8,7 @@ import {
   isServiceAvailable,
   DEFAULT_CITY,
   DEFAULT_PROFESSION,
-} from "@/src/utils/data/serviceAvailability";
+} from "@/utils/data/serviceAvailability";
 
 type AppScreen = "STEP6_AVAILABLE" | "STEP7_UNAVAILABLE";
 interface UserData { city: string; profession: string; }
