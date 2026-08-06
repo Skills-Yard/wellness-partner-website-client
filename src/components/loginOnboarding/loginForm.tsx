@@ -12,7 +12,7 @@ import { useRouter } from "next/navigation";
 
 // Assuming this is your data source
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { professions } from "@/src/utils/data/professions";
+import { professions } from "@/utils/data/professions";
 
 const cities = [
   "Delhi NCR",
