@@ -1,5 +1,5 @@
 import React from "react";
-import { ArrowLeft, ChevronDown, Loader2 } from "lucide-react";
+import { ArrowLeft, ChevronDown, Loader2, MapPin } from "lucide-react";
 import type { ServiceCategory } from "@/lib/api/types";
 
 interface OnboardingStepProps {
@@ -7,6 +7,7 @@ interface OnboardingStepProps {
   setName: (value: string) => void;
   selectedCategoryIds: string[];
   categories: ServiceCategory[];
+  categoriesLoading: boolean;
   city: string;
   agreed: boolean;
   setAgreed: (value: boolean) => void;
@@ -14,7 +15,6 @@ interface OnboardingStepProps {
   isFormValid: boolean;
   onBack: () => void;
   onOpenServiceSelect: () => void;
-  onOpenCitySelect: () => void;
   onComplete: () => void;
   loading?: boolean;
   error?: string | null;
@@ -25,6 +25,7 @@ export default function OnboardingStep({
   setName,
   selectedCategoryIds,
   categories,
+  categoriesLoading,
   city,
   agreed,
   setAgreed,
@@ -32,7 +33,6 @@ export default function OnboardingStep({
   isFormValid,
   onBack,
   onOpenServiceSelect,
-  onOpenCitySelect,
   onComplete,
   loading,
   error,
@@ -64,10 +64,17 @@ export default function OnboardingStep({
       {/* Scrollable body */}
       <div className="flex-1 overflow-y-auto px-5 pt-2 pb-4 flex flex-col">
         {/* Heading */}
-        <h2 className="text-[22px] font-extrabold text-stone-900 mb-6 leading-snug">
+        <h2 className="text-[22px] font-extrabold text-stone-900 mb-2 leading-snug">
           Tell us about{" "}
           <span className="underline decoration-2 underline-offset-2">yourself!</span>
         </h2>
+
+        {city && (
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-stone-500 mb-6">
+            <MapPin className="h-3.5 w-3.5 text-[#C9851A]" />
+            Serving {city}
+          </div>
+        )}
 
         <div className="space-y-5 flex-1">
           {/* Name */}
@@ -112,29 +119,11 @@ export default function OnboardingStep({
                   selectedCategoryIds.length ? "text-stone-900 font-medium" : "text-stone-400"
                 }`}
               >
-                {selectedLabel || "Select the services you provide"}
+                {categoriesLoading
+                  ? "Loading services available in your area…"
+                  : selectedLabel || "Select the services you provide"}
               </span>
               <ChevronDown className="h-4 w-4 text-stone-400 shrink-0 ml-2" />
-            </div>
-          </div>
-
-          {/* City */}
-          <div>
-            <p className="text-sm font-bold text-stone-850 mb-2">
-              Where do you work?
-            </p>
-            <div
-              onClick={onOpenCitySelect}
-              className="flex items-center justify-between rounded-xl border border-stone-200 bg-[#F9F6F0] hover:bg-white hover:border-amber-400 px-4 py-3.5 cursor-pointer transition-all"
-            >
-              <span
-                className={`text-sm ${
-                  city ? "text-stone-900 font-medium" : "text-stone-400"
-                }`}
-              >
-                {city || "Select City"}
-              </span>
-              <ChevronDown className="h-4 w-4 text-stone-400 shrink-0" />
             </div>
           </div>
         </div>

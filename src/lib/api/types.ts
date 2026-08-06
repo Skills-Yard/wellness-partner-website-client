@@ -80,10 +80,19 @@ export type VerifyOtpResponse =
   | { message: string; signupToken: string } // new partner: registration required
   | (AuthTokens & { message: string }); // existing partner: logged in
 
-// Top-level ServiceCategory (e.g. "Spa", "Salon for Men") — GET /catalog/categories.
-// This is what a partner picks at signup ("what services do you provide?"),
-// per the product decision to keep that choice broad rather than making
-// partners pick individual ServiceItem SKUs.
+// An OperationalZone a partner can pick as their service area — GET
+// /zones/list. Chosen before "what services do you offer?" so that step can
+// scope its catalog fetch to what's actually operable in that zone.
+export interface ServiceableZone {
+  id: string;
+  name: string;
+  city: string;
+}
+
+// Top-level ServiceCategory (e.g. "Spa", "Salon for Men"). At signup this is
+// derived from the partner's zone-scoped ServiceItem list (see
+// catalog.getServiceItems(zoneId)) rather than fetched globally, so only
+// categories actually available in the partner's chosen zone are offered.
 export interface ServiceCategory {
   id: string;
   name: string;
