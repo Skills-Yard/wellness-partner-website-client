@@ -1,12 +1,12 @@
 import React from "react";
 import { ArrowLeft, ChevronDown, Loader2 } from "lucide-react";
-import type { ServiceItem } from "@/lib/api/types";
+import type { ServiceCategory } from "@/lib/api/types";
 
 interface OnboardingStepProps {
   name: string;
   setName: (value: string) => void;
-  selectedServiceIds: string[];
-  services: ServiceItem[];
+  selectedCategoryIds: string[];
+  categories: ServiceCategory[];
   city: string;
   agreed: boolean;
   setAgreed: (value: boolean) => void;
@@ -23,8 +23,8 @@ interface OnboardingStepProps {
 export default function OnboardingStep({
   name,
   setName,
-  selectedServiceIds,
-  services,
+  selectedCategoryIds,
+  categories,
   city,
   agreed,
   setAgreed,
@@ -37,10 +37,10 @@ export default function OnboardingStep({
   loading,
   error,
 }: OnboardingStepProps) {
-  const selectedLabel = selectedServiceIds.length
-    ? services
-        .filter((s) => selectedServiceIds.includes(s.id))
-        .map((s) => s.title || s.name)
+  const selectedLabel = selectedCategoryIds.length
+    ? categories
+        .filter((c) => selectedCategoryIds.includes(c.id))
+        .map((c) => c.title || c.name)
         .join(", ")
     : "";
 
@@ -109,7 +109,7 @@ export default function OnboardingStep({
             >
               <span
                 className={`text-sm truncate ${
-                  selectedServiceIds.length ? "text-stone-900 font-medium" : "text-stone-400"
+                  selectedCategoryIds.length ? "text-stone-900 font-medium" : "text-stone-400"
                 }`}
               >
                 {selectedLabel || "Select the services you provide"}

@@ -1,9 +1,9 @@
 import React from "react";
 import { ArrowLeft, Search, Check } from "lucide-react";
-import type { ServiceItem } from "@/lib/api/types";
+import type { ServiceCategory } from "@/lib/api/types";
 
 interface ServiceSelectOverlayProps {
-  services: ServiceItem[];
+  categories: ServiceCategory[];
   loading: boolean;
   selectedIds: string[];
   onToggle: (id: string) => void;
@@ -13,7 +13,7 @@ interface ServiceSelectOverlayProps {
 }
 
 export default function ServiceSelectOverlay({
-  services,
+  categories,
   loading,
   selectedIds,
   onToggle,
@@ -21,8 +21,8 @@ export default function ServiceSelectOverlay({
   setSearch,
   onClose,
 }: ServiceSelectOverlayProps) {
-  const filtered = services.filter((s) =>
-    (s.title || s.name).toLowerCase().includes(search.toLowerCase())
+  const filtered = categories.filter((c) =>
+    (c.title || c.name).toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -54,17 +54,17 @@ export default function ServiceSelectOverlay({
         {!loading && filtered.length === 0 && (
           <p className="text-sm text-stone-400 py-6 text-center">No services found.</p>
         )}
-        {filtered.map((service) => {
-          const active = selectedIds.includes(service.id);
+        {filtered.map((category) => {
+          const active = selectedIds.includes(category.id);
           return (
             <label
-              key={service.id}
+              key={category.id}
               className="flex items-center justify-between py-3.5 border-b border-stone-100 cursor-pointer active:bg-stone-50"
             >
               <div className="min-w-0">
-                <span className="text-sm text-stone-700 block truncate">{service.title || service.name}</span>
-                {service.category?.title && (
-                  <span className="text-[11px] text-stone-400">{service.category.title}</span>
+                <span className="text-sm text-stone-700 block truncate">{category.title || category.name}</span>
+                {category.subtitle && (
+                  <span className="text-[11px] text-stone-400">{category.subtitle}</span>
                 )}
               </div>
               <div
@@ -77,7 +77,7 @@ export default function ServiceSelectOverlay({
               <input
                 type="checkbox"
                 checked={active}
-                onChange={() => onToggle(service.id)}
+                onChange={() => onToggle(category.id)}
                 className="hidden"
               />
             </label>

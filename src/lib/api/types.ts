@@ -80,14 +80,37 @@ export type VerifyOtpResponse =
   | { message: string; signupToken: string } // new partner: registration required
   | (AuthTokens & { message: string }); // existing partner: logged in
 
-export interface ServiceItem {
+// Top-level ServiceCategory (e.g. "Spa", "Salon for Men") — GET /catalog/categories.
+// This is what a partner picks at signup ("what services do you provide?"),
+// per the product decision to keep that choice broad rather than making
+// partners pick individual ServiceItem SKUs.
+export interface ServiceCategory {
+  id: string;
+  name: string;
+  slug: string;
+  title: string;
+  subtitle?: string;
+}
+
+export interface ServiceSubCategory {
   id: string;
   categoryId: string;
+  name: string;
+  slug: string;
+  title: string;
+  subtitle?: string;
+  category: ServiceCategory;
+}
+
+export interface ServiceItem {
+  id: string;
   name: string;
   slug?: string;
   title: string;
   subtitle?: string;
-  category?: { id: string; name: string; title?: string };
+  // Confusingly named on the backend DTO — this is actually the item's
+  // SubCategory, which itself nests the top-level ServiceCategory.
+  category: ServiceSubCategory;
   isActive: boolean;
 }
 

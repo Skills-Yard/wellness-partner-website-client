@@ -11,7 +11,7 @@ import { ApiError } from "@/lib/api/client";
 import * as partnerApi from "@/lib/api/partner";
 import * as onboardingApi from "@/lib/api/onboarding";
 import * as catalogApi from "@/lib/api/catalog";
-import type { ServiceItem } from "@/lib/api/types";
+import type { ServiceCategory, ServiceItem } from "@/lib/api/types";
 
 const cities = [
   "Delhi NCR",
@@ -32,6 +32,12 @@ type Step = "PROFILE_SERVICES" | "EARNINGS_PREVIEW" | "EARNINGS_DETAIL";
  * couple of non-skippable "why partner with us" marketing screens before
  * KYC. Submitting here always advances onboardingStep to 2 on the backend
  * (see PartnerService.setServices), so a reload lands straight on KYC.
+ *
+ * "What services do you offer?" is answered at the ServiceCategory level
+ * (Spa, Salon, etc.) rather than picking individual ServiceItem SKUs — a
+ * selected category is expanded into every ServiceItem under it before
+ * calling POST /partner/onboarding/services, since that's the granularity
+ * PartnerService actually links against.
  */
 export default function ProfileSetupFlow() {
   const { partner, refreshProfile, logout } = useAuth();
@@ -39,14 +45,13 @@ export default function ProfileSetupFlow() {
   const [step, setStep] = useState<Step>("PROFILE_SERVICES");
   const [name, setName] = useState(partner?.name ?? "");
   const [city, setCity] = useState(partner?.city ?? "");
-  const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>(
-    partner?.partnerServices?.map((s) => s.serviceItemId) ?? []
-  );
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [agreed, setAgreed] = useState(false);
   const [workHours, setWorkHours] = useState(8);
 
-  const [services, setServices] = useState<ServiceItem[]>([]);
-  const [servicesLoading, setServicesLoading] = useState(true);
+  const [categories, setCategories] = useState<ServiceCategory[]>([]);
+  const [items, setItems] = useState<ServiceItem[]>([]);
+  const [catalogLoading, setCatalogLoading] = useState(true);
   const [showCitySelect, setShowCitySelect] = useState(false);
   const [citySearch, setCitySearch] = useState("");
   const [showServiceSelect, setShowServiceSelect] = useState(false);
@@ -56,23 +61,44 @@ export default function ProfileSetupFlow() {
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
-    catalogApi
-      .getServiceItems()
-      .then(setServices)
-      .catch(() => setServices([]))
-      .finally(() => setServicesLoading(false));
+    Promise.all([catalogApi.getCategories(), catalogApi.getServiceItems()])
+      .then(([cats, serviceItems]) => {
+        setCategories(cats);
+        setItems(serviceItems);
+
+        // Resume: derive already-selected categories from the partner's
+        // existing PartnerService rows (serviceItem -> its top category).
+        const existingItemIds = new Set(
+          partner?.partnerServices?.map((s) => s.serviceItemId) ?? []
+        );
+        if (existingItemIds.size > 0) {
+          const categoryIds = new Set(
+            serviceItems
+              .filter((item) => existingItemIds.has(item.id))
+              .map((item) => item.category?.category?.id)
+              .filter((id): id is string => Boolean(id))
+          );
+          setSelectedCategoryIds(Array.from(categoryIds));
+        }
+      })
+      .catch(() => {
+        setCategories([]);
+        setItems([]);
+      })
+      .finally(() => setCatalogLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const hasSpecialChar = name.trim().length > 0 && /[^a-zA-Z\s]/.test(name);
   const isFormValid = Boolean(
-    name.trim().length > 0 && !hasSpecialChar && selectedServiceIds.length > 0 && city && agreed
+    name.trim().length > 0 && !hasSpecialChar && selectedCategoryIds.length > 0 && city && agreed
   );
 
   const filteredCities = cities.filter((c) => c.toLowerCase().includes(citySearch.toLowerCase()));
 
-  const toggleService = (id: string) => {
-    setSelectedServiceIds((prev) =>
-      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
+  const toggleCategory = (id: string) => {
+    setSelectedCategoryIds((prev) =>
+      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
     );
   };
 
@@ -81,8 +107,17 @@ export default function ProfileSetupFlow() {
     setSubmitLoading(true);
     setSubmitError(null);
     try {
+      const serviceItemIds = items
+        .filter((item) => selectedCategoryIds.includes(item.category?.category?.id))
+        .map((item) => item.id);
+
+      if (serviceItemIds.length === 0) {
+        setSubmitError("We couldn't find any services under the categories you picked. Please choose different ones.");
+        return;
+      }
+
       await partnerApi.updateProfile({ name: name.trim(), city });
-      await onboardingApi.setServices(selectedServiceIds);
+      await onboardingApi.setServices(serviceItemIds);
       setStep("EARNINGS_PREVIEW");
     } catch (err) {
       setSubmitError(err instanceof ApiError ? err.message : "Could not save your details. Please try again.");
@@ -108,10 +143,10 @@ export default function ProfileSetupFlow() {
 
       {showServiceSelect && step === "PROFILE_SERVICES" && (
         <ServiceSelectOverlay
-          services={services}
-          loading={servicesLoading}
-          selectedIds={selectedServiceIds}
-          onToggle={toggleService}
+          categories={categories}
+          loading={catalogLoading}
+          selectedIds={selectedCategoryIds}
+          onToggle={toggleCategory}
           search={serviceSearch}
           setSearch={setServiceSearch}
           onClose={() => setShowServiceSelect(false)}
@@ -122,8 +157,8 @@ export default function ProfileSetupFlow() {
         <OnboardingStep
           name={name}
           setName={setName}
-          selectedServiceIds={selectedServiceIds}
-          services={services}
+          selectedCategoryIds={selectedCategoryIds}
+          categories={categories}
           city={city}
           agreed={agreed}
           setAgreed={setAgreed}
