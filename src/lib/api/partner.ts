@@ -34,6 +34,7 @@ export function updateProfile(data: Partial<{
   pincode: string;
   serviceRadiusKm: number;
   bufferMinutes: number;
+  slotDurationMinutes: number;
   whatsappOptIn: boolean;
   isOnline: boolean;
 }>) {

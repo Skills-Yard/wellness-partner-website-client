@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useState } from "react";
-import { ChevronRight, CalendarClock, Briefcase, Users, Star, TrendingUp } from "lucide-react";
+import { ChevronRight, CalendarClock, Briefcase, Users, Star, TrendingUp, Lock } from "lucide-react";
 import BottomNav from "./BottomNav";
 import DesktopNav from "./DesktopNav";
 import HeroBanner from "./HeroBanner";
 import ProfilePage from "./ProfilePage";
 import MoneyPage from "./MoneyPage";
+import TrainingSection from "./TrainingSection";
 import BookingsPanel from "./panels/BookingsPanel";
 import AvailabilityPanel from "./panels/AvailabilityPanel";
 import TeamPanel from "./panels/TeamPanel";
@@ -34,17 +35,37 @@ function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string
   );
 }
 
-function ManageCard({ icon, title, onClick }: { icon: React.ReactNode; title: string; onClick: () => void }) {
+function ManageCard({
+  icon,
+  title,
+  onClick,
+  locked,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  onClick: () => void;
+  locked?: boolean;
+}) {
   return (
     <button
-      onClick={onClick}
-      className="flex items-center gap-4 bg-white rounded-2xl border border-stone-100 shadow-sm p-4 cursor-pointer hover:shadow-md transition-shadow text-left w-full"
+      onClick={locked ? undefined : onClick}
+      aria-disabled={locked}
+      className={`flex items-center gap-4 bg-white rounded-2xl border border-stone-100 shadow-sm p-4 text-left w-full transition-shadow ${
+        locked ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:shadow-md"
+      }`}
     >
       <div className="w-11 h-11 rounded-xl bg-[#FDF3E7] flex items-center justify-center shrink-0 text-[#C9851A]">
         {icon}
       </div>
-      <p className="flex-1 text-sm font-semibold text-stone-850">{title}</p>
-      <ChevronRight className="h-5 w-5 text-stone-450 shrink-0" />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-stone-850">{title}</p>
+        {locked && <p className="text-[11px] text-stone-400 mt-0.5">Unlocks once approved</p>}
+      </div>
+      {locked ? (
+        <Lock className="h-4 w-4 text-stone-350 shrink-0" />
+      ) : (
+        <ChevronRight className="h-5 w-5 text-stone-450 shrink-0" />
+      )}
     </button>
   );
 }
@@ -53,8 +74,19 @@ export default function PartnerHomescreen({ partner, onLogout }: PartnerHomescre
   const [activeTab, setActiveTab] = useState<"home" | "money" | "profile">("home");
   const [subView, setSubView] = useState<SubView>(null);
 
+  const isApproved = partner.status === "APPROVED";
+
+  // Manage cards route to a working panel only once the partner is fully
+  // approved — before that (TRAINING/PENDING_APPROVAL) they're shown
+  // locked rather than hidden, so the dashboard's shape doesn't change
+  // out from under the partner the moment they're approved.
+  const openSubView = (view: Exclude<SubView, null>) => {
+    if (!isApproved) return;
+    setSubView(view);
+  };
+
   if (subView === "bookings") return <BookingsPanel onBack={() => setSubView(null)} />;
-  if (subView === "availability") return <AvailabilityPanel onBack={() => setSubView(null)} />;
+  if (subView === "availability") return <AvailabilityPanel partner={partner} onBack={() => setSubView(null)} />;
   if (subView === "team") return <TeamPanel onBack={() => setSubView(null)} />;
   if (subView === "bank") return <BankAccountPanel onBack={() => setSubView(null)} />;
 
@@ -65,7 +97,7 @@ export default function PartnerHomescreen({ partner, onLogout }: PartnerHomescre
         onLogout={onLogout}
         activeTab={activeTab}
         onNavigate={setActiveTab}
-        onOpenBankAccount={() => setSubView("bank")}
+        onOpenBankAccount={() => openSubView("bank")}
       />
     );
   }
@@ -83,31 +115,38 @@ export default function PartnerHomescreen({ partner, onLogout }: PartnerHomescre
         {/* Welcome */}
         <div>
           <h2 className="text-lg sm:text-2xl font-extrabold text-stone-900 leading-snug">
-            Welcome back{partner.name ? `, ${partner.name.split(" ")[0]}` : ""}
+            Welcome{partner.name ? `, ${partner.name.split(" ")[0]}` : ""}
           </h2>
           <p className="text-sm text-stone-450 mt-1">
-            You&apos;re live in {partner.city ?? "your area"} as an approved Vellora partner.
+            {isApproved
+              ? `You're live in ${partner.city ?? "your area"} as an approved Vellora partner.`
+              : "Finish the steps below to get approved and start taking bookings."}
           </p>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <StatCard icon={<Briefcase className="h-5 w-5" />} label="Total bookings" value={partner.totalBookings} />
-          <StatCard icon={<Star className="h-5 w-5" />} label="Average rating" value={partner.averageRating.toFixed(1)} />
-          <StatCard icon={<TrendingUp className="h-5 w-5" />} label="Completion rate" value={`${Math.round(partner.completionRate)}%`} />
-          <StatCard icon={<CalendarClock className="h-5 w-5" />} label="Reviews" value={partner.totalReviews} />
-        </div>
+        {/* Training — only relevant (and only ever rendered here) pre-approval */}
+        {!isApproved && <TrainingSection partner={partner} />}
+
+        {/* Stats — meaningless before approval, so only shown once live */}
+        {isApproved && (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <StatCard icon={<Briefcase className="h-5 w-5" />} label="Total bookings" value={partner.totalBookings} />
+            <StatCard icon={<Star className="h-5 w-5" />} label="Average rating" value={partner.averageRating.toFixed(1)} />
+            <StatCard icon={<TrendingUp className="h-5 w-5" />} label="Completion rate" value={`${Math.round(partner.completionRate)}%`} />
+            <StatCard icon={<CalendarClock className="h-5 w-5" />} label="Reviews" value={partner.totalReviews} />
+          </div>
+        )}
 
         {/* Manage */}
         <div>
           <h3 className="text-base sm:text-lg font-extrabold text-stone-900 mb-3">Manage your work</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <ManageCard icon={<Briefcase className="h-5 w-5" />} title="Bookings" onClick={() => setSubView("bookings")} />
-            <ManageCard icon={<CalendarClock className="h-5 w-5" />} title="Availability & slots" onClick={() => setSubView("availability")} />
+            <ManageCard icon={<Briefcase className="h-5 w-5" />} title="Bookings" onClick={() => openSubView("bookings")} locked={!isApproved} />
+            <ManageCard icon={<CalendarClock className="h-5 w-5" />} title="Availability & slots" onClick={() => openSubView("availability")} locked={!isApproved} />
             {partner.type === "BUSINESS" && (
-              <ManageCard icon={<Users className="h-5 w-5" />} title="Team" onClick={() => setSubView("team")} />
+              <ManageCard icon={<Users className="h-5 w-5" />} title="Team" onClick={() => openSubView("team")} locked={!isApproved} />
             )}
-            <ManageCard icon={<span className="font-extrabold">₹</span>} title="Bank account" onClick={() => setSubView("bank")} />
+            <ManageCard icon={<span className="font-extrabold">₹</span>} title="Bank account" onClick={() => openSubView("bank")} locked={!isApproved} />
           </div>
         </div>
       </div>

@@ -7,7 +7,6 @@ import OnboardingShell from "./loginOnboarding/OnboardingShell";
 import LoginForm from "./loginOnboarding/loginForm";
 import ProfileSetupFlow from "./loginOnboarding/ProfileSetupFlow";
 import KycFlow from "../components/kyc/KycFlow";
-import TrainingScreen from "../components/training/TrainingScreen";
 import WaitingScreen from "../components/status/WaitingScreen";
 import BlockedScreen from "../components/status/BlockedScreen";
 import PartnerHomescreen from "./home/PartnerHomescreen";
@@ -66,23 +65,13 @@ export default function DashboardContent() {
         </OnboardingShell>
       );
 
+    // TRAINING and PENDING_APPROVAL both render the real dashboard rather
+    // than an isolated screen — PartnerHomescreen shows training progress
+    // (TrainingSection) inline and locks the rest of the dashboard's
+    // features until partner.status === APPROVED, so the partner sees their
+    // eventual dashboard taking shape instead of a dead end.
     case "TRAINING":
-      return (
-        <OnboardingShell>
-          <TrainingScreen />
-        </OnboardingShell>
-      );
-
     case "PENDING_APPROVAL":
-      return (
-        <OnboardingShell>
-          <WaitingScreen
-            title="Pending final approval"
-            description="Your training is complete. Our team is doing a final review before you go live."
-          />
-        </OnboardingShell>
-      );
-
     case "APPROVED":
       return <PartnerHomescreen partner={partner} onLogout={() => logout()} />;
 

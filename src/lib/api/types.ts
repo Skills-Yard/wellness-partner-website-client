@@ -294,6 +294,10 @@ export interface Partner {
   state?: string | null;
   pincode?: string | null;
   serviceRadiusKm: number;
+  bufferMinutes: number;
+  // Granularity PartnerSlot rows are chunked into from the weekly
+  // availability template (30 or 60) — see AvailabilityPanel.
+  slotDurationMinutes: number;
   totalBookings: number;
   completionRate: number;
   averageRating: number;
