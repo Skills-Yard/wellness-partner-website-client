@@ -104,7 +104,7 @@ export default function TrainingScreen() {
   const remaining = mandatory.filter((c) => c.status !== "COMPLETED").length;
 
   return (
-    <div className="flex flex-col flex-1 overflow-hidden bg-white">
+    <div className="flex flex-col flex-1 min-h-0 overflow-hidden bg-white">
       <div className="px-5 pt-6 pb-3 shrink-0">
         <div className="w-12 h-12 rounded-full bg-[#FDF3E7] flex items-center justify-center mb-3">
           <GraduationCap className="h-6 w-6 text-[#C9851A]" />

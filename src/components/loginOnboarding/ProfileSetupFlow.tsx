@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import ServiceAreaStep from "./ServiceAreaStep";
+import ServiceAreaStep, { type ResolvedArea } from "./ServiceAreaStep";
 import ServiceSelectOverlay from "./ServiceSelectOverlay";
 import OnboardingStep from "./OnboardingStep";
 import EarningsPreviewStep from "./EarningsPreviewStep";
@@ -12,7 +12,7 @@ import * as partnerApi from "@/lib/api/partner";
 import * as onboardingApi from "@/lib/api/onboarding";
 import * as catalogApi from "@/lib/api/catalog";
 import * as zonesApi from "@/lib/api/zones";
-import type { ServiceableZone, ServiceCategory, ServiceItem } from "@/lib/api/types";
+import type { ServiceCategory, ServiceItem } from "@/lib/api/types";
 
 type Step = "SERVICE_AREA" | "PROFILE_SERVICES" | "EARNINGS_PREVIEW" | "EARNINGS_DETAIL";
 
@@ -25,9 +25,13 @@ type Step = "SERVICE_AREA" | "PROFILE_SERVICES" | "EARNINGS_PREVIEW" | "EARNINGS
  * catalog. Then a couple of non-skippable "why partner with us" marketing
  * screens before KYC.
  *
+ * The service area itself is resolved from a coordinate (see
+ * ServiceAreaStep) rather than picked off a list — GET /zones resolves the
+ * OperationalZone whose hex grid contains that point.
+ *
  * "What services do you offer?" is answered at the ServiceCategory level
  * (Spa, Salon, etc.) — a selected category is expanded into every
- * ServiceItem under it (within the chosen zone) before calling
+ * ServiceItem under it (within the resolved zone) before calling
  * POST /partner/onboarding/services, since that's the granularity
  * PartnerService actually links against.
  */
@@ -37,11 +41,11 @@ export default function ProfileSetupFlow() {
   const [step, setStep] = useState<Step>("SERVICE_AREA");
 
   // Service area
-  const [zones, setZones] = useState<ServiceableZone[]>([]);
-  const [zonesLoading, setZonesLoading] = useState(true);
-  const [zonesError, setZonesError] = useState<string | null>(null);
-  const [zoneSearch, setZoneSearch] = useState("");
-  const [selectedZone, setSelectedZone] = useState<ServiceableZone | null>(null);
+  const [latitude, setLatitude] = useState(partner?.latitude != null ? String(partner.latitude) : "");
+  const [longitude, setLongitude] = useState(partner?.longitude != null ? String(partner.longitude) : "");
+  const [resolvedArea, setResolvedArea] = useState<ResolvedArea | null>(null);
+  const [resolving, setResolving] = useState(false);
+  const [resolveError, setResolveError] = useState<string | null>(null);
 
   // Profile + services
   const [name, setName] = useState(partner?.name ?? "");
@@ -58,42 +62,50 @@ export default function ProfileSetupFlow() {
   const [submitLoading, setSubmitLoading] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // Load service areas up front; if the partner already has a city on file
-  // (resuming onboarding), try to match it to a zone and skip straight to
-  // the services step instead of re-asking.
+  const resolveArea = async (lat: number, lon: number) => {
+    setResolving(true);
+    setResolveError(null);
+    try {
+      const result = await zonesApi.resolveZoneFromCoordinates(lat, lon);
+      if (result.exists) {
+        setResolvedArea({ zoneId: result.zoneId, city: result.city, latitude: lat, longitude: lon });
+      } else {
+        setResolvedArea(null);
+        setResolveError("We don't currently operate at this location. Try a different spot, or check back later.");
+      }
+    } catch (err) {
+      setResolvedArea(null);
+      setResolveError(err instanceof ApiError ? err.message : "Could not check this location. Please try again.");
+    } finally {
+      setResolving(false);
+    }
+  };
+
+  // Resume: if the partner already has a location on file (from a previous
+  // session), auto-resolve it and skip straight to the services step
+  // instead of re-asking.
   useEffect(() => {
-    zonesApi
-      .listZones()
-      .then((list) => {
-        setZones(list);
-        if (partner?.city) {
-          const match = list.find(
-            (z) => z.city.toLowerCase() === partner.city!.toLowerCase()
-          );
-          if (match) {
-            setSelectedZone(match);
-            setStep("PROFILE_SERVICES");
-          }
-        }
-      })
-      .catch(() => setZonesError("Could not load service areas. Please try again."))
-      .finally(() => setZonesLoading(false));
+    if (partner?.latitude != null && partner?.longitude != null) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch-on-mount resume, not a render-loop hazard
+      resolveArea(partner.latitude, partner.longitude).then(() => setStep("PROFILE_SERVICES"));
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Once a zone is chosen, fetch the catalog scoped to it and derive the
-  // category picker from whatever ServiceItems are actually available there.
+  // Once an area is resolved, fetch the catalog scoped to its zone and
+  // derive the category picker from whatever ServiceItems are actually
+  // available there.
   useEffect(() => {
-    if (!selectedZone) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch-on-selection, not a render-loop hazard
+    if (!resolvedArea) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch-on-resolution, not a render-loop hazard
     setCatalogLoading(true);
     catalogApi
-      .getServiceItems(selectedZone.id)
+      .getServiceItems(resolvedArea.zoneId)
       .then((serviceItems) => {
         setItems(serviceItems);
         const byId = new Map<string, ServiceCategory>();
         serviceItems.forEach((item) => {
-          const cat = item.category?.category;
+          const cat = item.subCategory?.category;
           if (cat && !byId.has(cat.id)) byId.set(cat.id, cat);
         });
         setCategories(Array.from(byId.values()));
@@ -107,7 +119,7 @@ export default function ProfileSetupFlow() {
           const categoryIds = new Set(
             serviceItems
               .filter((item) => existingItemIds.has(item.id))
-              .map((item) => item.category?.category?.id)
+              .map((item) => item.subCategory?.category?.id)
               .filter((id): id is string => Boolean(id))
           );
           setSelectedCategoryIds(Array.from(categoryIds));
@@ -119,7 +131,7 @@ export default function ProfileSetupFlow() {
       })
       .finally(() => setCatalogLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedZone]);
+  }, [resolvedArea]);
 
   const hasSpecialChar = name.trim().length > 0 && /[^a-zA-Z\s]/.test(name);
   const isFormValid = Boolean(
@@ -133,12 +145,12 @@ export default function ProfileSetupFlow() {
   };
 
   const handleComplete = async () => {
-    if (!isFormValid || submitLoading || !selectedZone) return;
+    if (!isFormValid || submitLoading || !resolvedArea) return;
     setSubmitLoading(true);
     setSubmitError(null);
     try {
       const serviceItemIds = items
-        .filter((item) => selectedCategoryIds.includes(item.category?.category?.id))
+        .filter((item) => selectedCategoryIds.includes(item.subCategory?.category?.id))
         .map((item) => item.id);
 
       if (serviceItemIds.length === 0) {
@@ -146,7 +158,14 @@ export default function ProfileSetupFlow() {
         return;
       }
 
-      await partnerApi.updateProfile({ name: name.trim(), city: selectedZone.city });
+      // PATCH /profile with lat/lon triggers the backend's own zone
+      // resolution + city/servingHexes persistence (PartnerService.update),
+      // so the partner record ends up with the same area we resolved above.
+      await partnerApi.updateProfile({
+        name: name.trim(),
+        latitude: resolvedArea.latitude,
+        longitude: resolvedArea.longitude,
+      });
       await onboardingApi.setServices(serviceItemIds);
       setStep("EARNINGS_PREVIEW");
     } catch (err) {
@@ -159,16 +178,17 @@ export default function ProfileSetupFlow() {
   const earningMap: Record<number, string> = { 4: "₹27,450", 6: "₹37,200", 8: "₹47,199" };
 
   return (
-    <div className="relative flex-1 flex flex-col overflow-hidden">
+    <div className="relative flex-1 flex flex-col min-h-0 overflow-hidden">
       {step === "SERVICE_AREA" && (
         <ServiceAreaStep
-          zones={zones}
-          loading={zonesLoading}
-          error={zonesError}
-          selectedZoneId={selectedZone?.id ?? null}
-          onSelect={setSelectedZone}
-          search={zoneSearch}
-          setSearch={setZoneSearch}
+          latitude={latitude}
+          longitude={longitude}
+          setLatitude={setLatitude}
+          setLongitude={setLongitude}
+          resolving={resolving}
+          error={resolveError}
+          resolvedArea={resolvedArea}
+          onResolve={() => resolveArea(parseFloat(latitude), parseFloat(longitude))}
           onContinue={() => setStep("PROFILE_SERVICES")}
         />
       )}
@@ -192,7 +212,7 @@ export default function ProfileSetupFlow() {
           selectedCategoryIds={selectedCategoryIds}
           categories={categories}
           categoriesLoading={catalogLoading}
-          city={selectedZone?.city ?? ""}
+          city={resolvedArea?.city ?? ""}
           agreed={agreed}
           setAgreed={setAgreed}
           hasSpecialChar={hasSpecialChar}

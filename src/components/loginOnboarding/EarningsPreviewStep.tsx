@@ -7,7 +7,7 @@ interface EarningsPreviewStepProps {
 export default function EarningsPreviewStep({ onNext }: EarningsPreviewStepProps) {
   return (
     <div
-      className="flex flex-col flex-1 animate-in fade-in duration-300 overflow-y-auto"
+      className="flex flex-col flex-1 min-h-0 animate-in fade-in duration-300 overflow-y-auto"
       style={{ background: "linear-gradient(179.82deg, #FDF7F2 0.16%, #FFFFFF 121.94%)" }}
     >
       {/* Partner earnings grid image */}

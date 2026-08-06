@@ -64,6 +64,7 @@ async function silentRefresh(): Promise<boolean> {
           headers: {
             "Content-Type": "application/json",
             "x-client-platform": "WEB",
+            "ngrok-skip-browser-warning": "true",
           },
           body: JSON.stringify({}),
         });
@@ -90,6 +91,12 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   const finalHeaders: Record<string, string> = {
     "Content-Type": "application/json",
     "x-client-platform": "WEB",
+    // The dev backend is fronted by an ngrok free-tier tunnel, which serves
+    // an HTML "visit site" interstitial (no CORS headers) in place of the
+    // real response for GET requests from a browser-looking User-Agent —
+    // the browser then reports that as a CORS failure. This header is
+    // ngrok's documented opt-out; harmless against any non-ngrok backend.
+    "ngrok-skip-browser-warning": "true",
     ...headers,
   };
 

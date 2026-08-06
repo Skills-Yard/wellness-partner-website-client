@@ -80,14 +80,14 @@ export type VerifyOtpResponse =
   | { message: string; signupToken: string } // new partner: registration required
   | (AuthTokens & { message: string }); // existing partner: logged in
 
-// An OperationalZone a partner can pick as their service area — GET
-// /zones/list. Chosen before "what services do you offer?" so that step can
-// scope its catalog fetch to what's actually operable in that zone.
-export interface ServiceableZone {
-  id: string;
-  name: string;
-  city: string;
-}
+// Resolves an OperationalZone from a coordinate — GET /zones?latitude&longitude.
+// Asked before "what services do you offer?" so that step can scope its
+// catalog fetch to what's actually operable at the partner's location
+// (x-zone-id). `exists: false` means the coordinate falls outside every
+// operational zone's hex coverage — not currently serviceable.
+export type ZoneCoordinateResolution =
+  | { exists: true; zoneId: string; zoneName: string; city: string; h3Index: string }
+  | { exists: false; h3Index: string };
 
 // Top-level ServiceCategory (e.g. "Spa", "Salon for Men"). At signup this is
 // derived from the partner's zone-scoped ServiceItem list (see
@@ -115,11 +115,16 @@ export interface ServiceItem {
   id: string;
   name: string;
   slug?: string;
-  title: string;
-  subtitle?: string;
-  // Confusingly named on the backend DTO — this is actually the item's
-  // SubCategory, which itself nests the top-level ServiceCategory.
-  category: ServiceSubCategory;
+  cardTitle: string;
+  cardSubtitle?: string;
+  subCategoryId: string;
+  // NOTE: GET /catalog/service-items (ClientServiceItemController) returns
+  // the raw Prisma entity, not ServiceItemResponseDto's shaped `category`
+  // field — the controller is missing @UseInterceptors(ClassSerializerInterceptor)
+  // that the sibling category/sub-category controllers have, so the DTO's
+  // field renaming/whitelisting never actually applies. Reflects the real
+  // wire shape (subCategory, not category) rather than the DTO's intent.
+  subCategory: ServiceSubCategory;
   isActive: boolean;
 }
 

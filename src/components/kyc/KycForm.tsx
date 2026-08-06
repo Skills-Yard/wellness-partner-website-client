@@ -129,7 +129,7 @@ export default function KycForm({ partnerType, initial, onSubmitted }: KycFormPr
   };
 
   return (
-    <div className="flex flex-col flex-1 bg-white">
+    <div className="flex flex-col flex-1 min-h-0 bg-white">
       <div className="flex-1 overflow-y-auto px-5 pt-5 pb-4">
         <h2 className="text-[20px] font-extrabold text-stone-900 mb-1 leading-snug">
           Verify your identity

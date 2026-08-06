@@ -23,7 +23,7 @@ export default function WaitingScreen({ title, description }: WaitingScreenProps
   };
 
   return (
-    <div className="flex flex-col flex-1 items-center justify-center px-8 text-center bg-white animate-in fade-in duration-300">
+    <div className="flex flex-col flex-1 min-h-0 items-center justify-center px-8 text-center bg-white animate-in fade-in duration-300 overflow-y-auto">
       <div className="w-16 h-16 rounded-full bg-[#FDF3E7] flex items-center justify-center mb-5">
         <Clock3 className="h-7 w-7 text-[#C9851A]" />
       </div>

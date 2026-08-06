@@ -32,7 +32,7 @@ export default function OtpStep({
   devOtp,
 }: OtpStepProps) {
   return (
-    <div className="flex flex-col flex-1 animate-in fade-in duration-300">
+    <div className="flex flex-col flex-1 min-h-0 animate-in fade-in duration-300">
       {/* Back arrow */}
       <div className="px-5 pt-5">
         <button

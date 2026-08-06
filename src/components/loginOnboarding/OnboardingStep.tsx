@@ -45,7 +45,7 @@ export default function OnboardingStep({
     : "";
 
   return (
-    <div className="flex flex-col flex-1 bg-white animate-in fade-in duration-300">
+    <div className="flex flex-col flex-1 min-h-0 bg-white animate-in fade-in duration-300">
       {/* Top bar: back arrow + English button */}
       <div className="flex items-center justify-between px-4 pt-5 pb-2 shrink-0">
         <button

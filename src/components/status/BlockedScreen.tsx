@@ -28,7 +28,7 @@ export default function BlockedScreen({ status }: { status: PartnerStatus }) {
   };
 
   return (
-    <div className="flex flex-col flex-1 items-center justify-center px-8 text-center bg-white animate-in fade-in duration-300">
+    <div className="flex flex-col flex-1 min-h-0 items-center justify-center px-8 text-center bg-white animate-in fade-in duration-300 overflow-y-auto">
       <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mb-5">
         <ShieldAlert className="h-7 w-7 text-red-500" />
       </div>

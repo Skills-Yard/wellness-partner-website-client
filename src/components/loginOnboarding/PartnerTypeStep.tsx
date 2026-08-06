@@ -35,7 +35,7 @@ export default function PartnerTypeStep({
   error,
 }: PartnerTypeStepProps) {
   return (
-    <div className="flex flex-col flex-1 bg-white animate-in fade-in duration-300">
+    <div className="flex flex-col flex-1 min-h-0 bg-white animate-in fade-in duration-300">
       <div className="px-4 pt-5 pb-2 shrink-0">
         <button
           onClick={onBack}

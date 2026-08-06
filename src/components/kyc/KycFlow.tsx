@@ -34,7 +34,7 @@ export default function KycFlow() {
   const isResubmission = kyc?.status === "RESUBMISSION_REQUIRED";
 
   return (
-    <div className="flex flex-col flex-1 overflow-hidden">
+    <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
       <div className="px-4 pt-5 pb-1 flex items-center justify-between shrink-0">
         <div className="w-8" />
         <button

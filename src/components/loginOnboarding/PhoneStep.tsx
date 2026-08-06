@@ -18,7 +18,7 @@ export default function PhoneStep({
   error,
 }: PhoneStepProps) {
   return (
-    <div className="flex flex-col flex-1 animate-in fade-in duration-300">
+    <div className="flex flex-col flex-1 min-h-0 animate-in fade-in duration-300">
       {/* Centred content */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 text-center pt-10">
         <PhoneIconIllustration />
