@@ -196,7 +196,7 @@ export default function LoginForm() {
 
       {/* Floating Notification */}
       <div
-        className={`absolute left-1/2 z-[60] w-[90%] max-w-xs -translate-x-1/2 rounded-2xl bg-stone-900 p-3.5 text-white shadow-2xl transition-all duration-500 ${
+        className={`absolute left-1/2 z-60 w-[90%] max-w-xs -translate-x-1/2 rounded-2xl bg-stone-900 p-3.5 text-white shadow-2xl transition-all duration-500 ${
           notification.visible ? "bottom-6 opacity-100" : "-bottom-full opacity-0"
         }`}
       >
