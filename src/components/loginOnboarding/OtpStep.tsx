@@ -1,5 +1,5 @@
 import React from "react";
-import { ArrowLeft, Timer, RotateCcw } from "lucide-react";
+import { ArrowLeft, Timer, RotateCcw, Loader2 } from "lucide-react";
 import { OtpIconIllustration } from "./illustrations";
 
 interface OtpStepProps {
@@ -12,6 +12,9 @@ interface OtpStepProps {
   handleOtpKeyDown: (index: number, e: React.KeyboardEvent<HTMLInputElement>) => void;
   onBack: () => void;
   onResend: () => void;
+  loading?: boolean;
+  error?: string | null;
+  devOtp?: string | null;
 }
 
 export default function OtpStep({
@@ -24,6 +27,9 @@ export default function OtpStep({
   handleOtpKeyDown,
   onBack,
   onResend,
+  loading,
+  error,
+  devOtp,
 }: OtpStepProps) {
   return (
     <div className="flex flex-col flex-1 animate-in fade-in duration-300">
@@ -62,10 +68,11 @@ export default function OtpStep({
               inputMode="numeric"
               maxLength={1}
               value={digit}
+              disabled={loading}
               onChange={(e) => handleOtpChange(index, e.target.value)}
               onKeyDown={(e) => handleOtpKeyDown(index, e)}
               id={`otp-input-${index}`}
-              className={`h-12 w-10 sm:h-14 sm:w-12 text-center text-lg font-bold rounded-xl border-2 outline-none transition-all bg-white cursor-text ${
+              className={`h-12 w-10 sm:h-14 sm:w-12 text-center text-lg font-bold rounded-xl border-2 outline-none transition-all bg-white cursor-text disabled:opacity-60 ${
                 digit !== ""
                   ? "border-stone-700 text-stone-900"
                   : "border-stone-200 text-transparent"
@@ -74,13 +81,24 @@ export default function OtpStep({
           ))}
         </div>
 
+        {loading && (
+          <div className="flex items-center gap-2 text-sm font-medium text-stone-500 mb-2">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Verifying…
+          </div>
+        )}
+
+        {error && (
+          <p className="mb-2 text-xs font-medium text-red-500 max-w-[300px]">{error}</p>
+        )}
+
         {/* Resend timer / button */}
         <div className="flex items-center gap-2 text-sm font-medium">
           {!timerExpired ? (
             <>
               <Timer className="h-4 w-4 text-stone-400" />
               <span className="text-stone-500">
-                Resent code in{" "}
+                Resend code in{" "}
                 <span className="text-amber-500 font-bold">
                   00:{timer < 10 ? `0${timer}` : timer}
                 </span>
@@ -97,11 +115,13 @@ export default function OtpStep({
           )}
         </div>
 
-        {/* Auto-fill indicator */}
-        <div className="mt-5 flex items-center gap-2 text-[11px] text-amber-600 bg-amber-50 px-3 py-2 rounded-full animate-pulse">
-          <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
-          <span>Auto-filling mock verification code…</span>
-        </div>
+        {/* Dev-mode OTP hint — backend echoes the code back outside production */}
+        {devOtp && (
+          <div className="mt-5 flex items-center gap-2 text-[11px] text-amber-600 bg-amber-50 px-3 py-2 rounded-full">
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
+            <span>Dev mode — your code is {devOtp}</span>
+          </div>
+        )}
       </div>
 
       {/* Bottom spacer */}

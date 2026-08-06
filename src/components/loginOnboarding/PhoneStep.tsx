@@ -1,34 +1,26 @@
 import React from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Loader2 } from "lucide-react";
 import { PhoneIconIllustration } from "./illustrations";
 
 interface PhoneStepProps {
   phone: string;
   setPhone: (value: string) => void;
   onPhoneSubmit: () => void;
-  onSkip: () => void;
+  loading?: boolean;
+  error?: string | null;
 }
 
 export default function PhoneStep({
   phone,
   setPhone,
   onPhoneSubmit,
-  onSkip,
+  loading,
+  error,
 }: PhoneStepProps) {
   return (
     <div className="flex flex-col flex-1 animate-in fade-in duration-300">
-      {/* Skip */}
-      <div className="flex justify-end px-5 pt-5">
-        <button
-          onClick={onSkip}
-          className="rounded-full border border-stone-200 px-4 py-1.5 text-xs font-semibold text-stone-600 hover:bg-stone-50 active:scale-95 transition-all cursor-pointer"
-        >
-          Skip
-        </button>
-      </div>
-
       {/* Centred content */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
+      <div className="flex-1 flex flex-col items-center justify-center px-6 text-center pt-10">
         <PhoneIconIllustration />
 
         <h1 className="text-[22px] md:text-xl font-bold text-stone-900 leading-tight mb-2">
@@ -50,11 +42,15 @@ export default function PhoneStep({
             autoFocus
             value={phone}
             onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
-            onKeyDown={(e) => e.key === "Enter" && onPhoneSubmit()}
+            onKeyDown={(e) => e.key === "Enter" && !loading && onPhoneSubmit()}
             className="flex-1 px-3 py-3 text-sm text-stone-900 outline-none font-medium bg-transparent placeholder:text-stone-300"
             placeholder="Enter phone number"
           />
         </div>
+
+        {error && (
+          <p className="mt-3 text-xs font-medium text-red-500 max-w-[300px]">{error}</p>
+        )}
       </div>
 
       {/* Bottom: T&C + Continue button */}
@@ -67,14 +63,15 @@ export default function PhoneStep({
         </p>
         <button
           onClick={onPhoneSubmit}
-          disabled={phone.length < 10}
+          disabled={phone.length < 10 || loading}
           id="phone-continue-btn"
-          className={`w-full rounded-2xl py-4 text-base font-bold transition-all active:scale-[0.98] ${
-            phone.length >= 10
+          className={`w-full rounded-2xl py-4 text-base font-bold transition-all active:scale-[0.98] flex items-center justify-center gap-2 ${
+            phone.length >= 10 && !loading
               ? "bg-stone-900 text-white hover:bg-stone-800 shadow-lg cursor-pointer"
               : "bg-stone-100 text-stone-300 cursor-not-allowed"
           }`}
         >
+          {loading && <Loader2 className="h-4 w-4 animate-spin" />}
           Continue
         </button>
       </div>

@@ -1,98 +1,125 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { MessageSquare } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { professions } from "@/utils/data/professions";
-
-import CitySelectOverlay from "./CitySelectOverlay";
-import WorkSelectOverlay from "./WorkSelectOverlay";
 import PhoneStep from "./PhoneStep";
 import OtpStep from "./OtpStep";
-import OnboardingStep from "./OnboardingStep";
-import EarningsPreviewStep from "./EarningsPreviewStep";
-import EarningsDetailStep from "./EarningsDetailStep";
+import PartnerTypeStep from "./PartnerTypeStep";
+import { useAuth } from "@/lib/auth/AuthProvider";
+import { ApiError } from "@/lib/api/client";
+import * as authApi from "@/lib/api/auth";
+import * as partnerApi from "@/lib/api/partner";
+import type { PartnerType } from "@/lib/api/types";
 
-const cities = [
-  "Delhi NCR",
-  "Mumbai",
-  "Bangalore",
-  "Noida",
-  "Gurugram",
-  "Kolkata",
-  "Chennai",
-  "Hyderabad",
-  "Pune",
-];
+type AuthStep = "PHONE" | "OTP" | "PARTNER_TYPE";
 
-type AuthStep = "PHONE" | "OTP" | "ONBOARDING" | "EARNINGS_PREVIEW" | "EARNINGS_DETAIL";
+const RESEND_SECONDS = 30;
 
-function LoginFormContent({
-  onClose,
-  onComplete,
-}: {
-  onClose: () => void;
-  onComplete?: (data: { city: string; profession: string }) => void;
-}) {
-  const router = useRouter();
+/**
+ * The unauthenticated onboarding entry point: phone -> OTP -> (existing
+ * partner: done, AuthProvider flips to authenticated and the gate takes
+ * over) -> (new partner: pick INDIVIDUAL/BUSINESS -> register -> done).
+ * There is no skip anywhere in this flow.
+ */
+export default function LoginForm() {
+  const { login } = useAuth();
 
   const [step, setStep] = useState<AuthStep>("PHONE");
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState<string[]>(Array(6).fill(""));
-  const [timer, setTimer] = useState(26);
+  const [timer, setTimer] = useState(RESEND_SECONDS);
   const [timerExpired, setTimerExpired] = useState(false);
+  const [devOtp, setDevOtp] = useState<string | null>(null);
+  const [signupToken, setSignupToken] = useState<string | null>(null);
+  const [partnerType, setPartnerType] = useState<PartnerType | null>(null);
 
-  const [name, setName] = useState("");
-  const [profession, setProfession] = useState("");
-  const [city, setCity] = useState("");
-  const [agreed, setAgreed] = useState(false);
-  const [workHours, setWorkHours] = useState(8);
-
-  const [showCitySelect, setShowCitySelect] = useState(false);
-  const [citySearch, setCitySearch] = useState("");
-  const [showWorkSelect, setShowWorkSelect] = useState(false);
-  const [workSearch, setWorkSearch] = useState("");
+  const [phoneLoading, setPhoneLoading] = useState(false);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpError, setOtpError] = useState<string | null>(null);
+  const [typeLoading, setTypeLoading] = useState(false);
+  const [typeError, setTypeError] = useState<string | null>(null);
 
   const [notification, setNotification] = useState({ visible: false, message: "" });
 
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // ── Phone step logic ───────────────────────────────────────────────────
-  const handlePhoneSubmit = () => {
-    if (phone.length >= 10) setStep("OTP");
+  const startResendTimer = () => {
+    setTimer(RESEND_SECONDS);
+    setTimerExpired(false);
   };
 
-  // ── OTP step logic ─────────────────────────────────────────────────────
   useEffect(() => {
-    let countdown: NodeJS.Timeout;
-    let otpTimer: NodeJS.Timeout;
-
-    if (step === "OTP") {
-      setTimer(26);
-      setTimerExpired(false);
-      setOtp(Array(6).fill(""));
-
-      countdown = setInterval(() => {
-        setTimer((prev) => {
-          if (prev <= 1) { setTimerExpired(true); return 0; }
-          return prev - 1;
-        });
-      }, 1000);
-
-      otpTimer = setTimeout(() => {
-        const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
-        setNotification({ visible: true, message: `Your verification code is ${generatedOtp}` });
-        setTimeout(() => {
-          setOtp(generatedOtp.split(""));
-          setNotification({ visible: false, message: "" });
-          setTimeout(() => setStep("ONBOARDING"), 600);
-        }, 2000);
-      }, 1500);
-    }
-
-    return () => { clearTimeout(otpTimer); clearInterval(countdown); };
+    if (step !== "OTP") return;
+    const countdown = setInterval(() => {
+      setTimer((prev) => {
+        if (prev <= 1) {
+          setTimerExpired(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(countdown);
   }, [step]);
+
+  const requestOtpForCurrentPhone = async () => {
+    const res = await authApi.requestOtp("+91", phone);
+    setDevOtp(res.otp ?? null);
+    if (res.otp) {
+      setNotification({ visible: true, message: `Your verification code is ${res.otp}` });
+      setTimeout(() => setNotification({ visible: false, message: "" }), 3000);
+    }
+  };
+
+  const handlePhoneSubmit = async () => {
+    if (phone.length < 10 || phoneLoading) return;
+    setPhoneLoading(true);
+    setPhoneError(null);
+    try {
+      await requestOtpForCurrentPhone();
+      setOtp(Array(6).fill(""));
+      startResendTimer();
+      setStep("OTP");
+    } catch (err) {
+      setPhoneError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
+    } finally {
+      setPhoneLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    if (otpLoading) return;
+    setOtpError(null);
+    try {
+      await requestOtpForCurrentPhone();
+      setOtp(Array(6).fill(""));
+      startResendTimer();
+    } catch (err) {
+      setOtpError(err instanceof ApiError ? err.message : "Could not resend the code. Please try again.");
+    }
+  };
+
+  const submitOtp = async (code: string) => {
+    if (otpLoading) return;
+    setOtpLoading(true);
+    setOtpError(null);
+    try {
+      const result = await authApi.verifyOtp("+91", phone, code);
+      if ("signupToken" in result && result.signupToken) {
+        setSignupToken(result.signupToken);
+        setStep("PARTNER_TYPE");
+      } else if ("accessToken" in result) {
+        await login(result);
+      }
+    } catch (err) {
+      setOtpError(err instanceof ApiError ? err.message : "Invalid code. Please try again.");
+      setOtp(Array(6).fill(""));
+      otpRefs.current[0]?.focus();
+    } finally {
+      setOtpLoading(false);
+    }
+  };
 
   const handleOtpChange = (index: number, value: string) => {
     const digit = value.replace(/\D/g, "").slice(-1);
@@ -100,71 +127,45 @@ function LoginFormContent({
     newOtp[index] = digit;
     setOtp(newOtp);
     if (digit && index < 5) otpRefs.current[index + 1]?.focus();
-    if (newOtp.every((d) => d !== "")) setTimeout(() => setStep("ONBOARDING"), 400);
+    if (newOtp.every((d) => d !== "")) {
+      const code = newOtp.join("");
+      setTimeout(() => submitOtp(code), 150);
+    }
   };
 
   const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Backspace" && !otp[index] && index > 0) otpRefs.current[index - 1]?.focus();
   };
 
-  // ── Onboarding step logic ──────────────────────────────────────────────
-  const handleComplete = () => setStep("EARNINGS_PREVIEW");
-
-  const handleFinalComplete = () => {
-    if (onComplete) onComplete({ city, profession });
-    else onClose();
-    router.push("/");
+  const handleRegister = async () => {
+    if (!signupToken || !partnerType || typeLoading) return;
+    setTypeLoading(true);
+    setTypeError(null);
+    try {
+      const result = await partnerApi.registerPartner(signupToken, {
+        countryCode: "+91",
+        type: partnerType,
+      });
+      await login(result.tokens, result.partner.newUser);
+    } catch (err) {
+      setTypeError(err instanceof ApiError ? err.message : "Registration failed. Please try again.");
+    } finally {
+      setTypeLoading(false);
+    }
   };
-
-  const earningMap: Record<number, string> = { 4: "₹27,450", 6: "₹37,200", 8: "₹47,199" };
-
-  const hasSpecialChar = name.trim().length > 0 && /[^a-zA-Z\s]/.test(name);
-  const isFormValid = Boolean(name.trim().length > 0 && !hasSpecialChar && profession && city && agreed);
-
-  const filteredCities = cities.filter((c) =>
-    c.toLowerCase().includes(citySearch.toLowerCase())
-  );
-  const filteredProfessions = professions.filter((p) =>
-    p.toLowerCase().includes(workSearch.toLowerCase())
-  );
 
   return (
     <div className="relative flex-1 flex flex-col overflow-hidden">
-      {/* City Select Overlay */}
-      {showCitySelect && step === "ONBOARDING" && (
-        <CitySelectOverlay
-          filteredCities={filteredCities}
-          city={city}
-          citySearch={citySearch}
-          setCitySearch={setCitySearch}
-          setCity={setCity}
-          onClose={() => setShowCitySelect(false)}
-        />
-      )}
-
-      {/* Work Select Overlay */}
-      {showWorkSelect && step === "ONBOARDING" && (
-        <WorkSelectOverlay
-          filteredProfessions={filteredProfessions}
-          profession={profession}
-          workSearch={workSearch}
-          setWorkSearch={setWorkSearch}
-          setProfession={setProfession}
-          onClose={() => setShowWorkSelect(false)}
-        />
-      )}
-
-      {/* Step 1: Phone */}
       {step === "PHONE" && (
         <PhoneStep
           phone={phone}
           setPhone={setPhone}
           onPhoneSubmit={handlePhoneSubmit}
-          onSkip={onClose}
+          loading={phoneLoading}
+          error={phoneError}
         />
       )}
 
-      {/* Step 2: OTP */}
       {step === "OTP" && (
         <OtpStep
           phone={phone}
@@ -175,41 +176,21 @@ function LoginFormContent({
           handleOtpChange={handleOtpChange}
           handleOtpKeyDown={handleOtpKeyDown}
           onBack={() => setStep("PHONE")}
-          onResend={() => setStep("OTP")}
+          onResend={handleResend}
+          loading={otpLoading}
+          error={otpError}
+          devOtp={devOtp}
         />
       )}
 
-      {/* Step 3: Onboarding */}
-      {step === "ONBOARDING" && (
-        <OnboardingStep
-          name={name}
-          setName={setName}
-          profession={profession}
-          city={city}
-          agreed={agreed}
-          setAgreed={setAgreed}
-          hasSpecialChar={hasSpecialChar}
-          isFormValid={isFormValid}
+      {step === "PARTNER_TYPE" && (
+        <PartnerTypeStep
+          value={partnerType}
+          onChange={setPartnerType}
           onBack={() => setStep("OTP")}
-          onOpenWorkSelect={() => setShowWorkSelect(true)}
-          onOpenCitySelect={() => setShowCitySelect(true)}
-          onComplete={handleComplete}
-        />
-      )}
-
-      {/* Step 4: Earnings Preview */}
-      {step === "EARNINGS_PREVIEW" && (
-        <EarningsPreviewStep onNext={() => setStep("EARNINGS_DETAIL")} />
-      )}
-
-      {/* Step 5: Earnings Detail */}
-      {step === "EARNINGS_DETAIL" && (
-        <EarningsDetailStep
-          workHours={workHours}
-          setWorkHours={setWorkHours}
-          earningMap={earningMap}
-          onBack={() => setStep("EARNINGS_PREVIEW")}
-          onFinalComplete={handleFinalComplete}
+          onContinue={handleRegister}
+          loading={typeLoading}
+          error={typeError}
         />
       )}
 
@@ -230,50 +211,5 @@ function LoginFormContent({
         </div>
       </div>
     </div>
-  );
-}
-
-export default function LoginForm({
-  onClose,
-  onComplete,
-}: {
-  onClose: () => void;
-  onComplete?: (data: { city: string; profession: string }) => void;
-}) {
-  const [isMobile, setIsMobile] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768);
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, []);
-
-  if (isMobile === null) return null;
-
-  if (isMobile) {
-    return (
-      <div className="fixed inset-0 z-50 flex flex-col bg-white overflow-hidden">
-        <LoginFormContent onClose={onClose} onComplete={onComplete} />
-      </div>
-    );
-  }
-
-  return (
-    <Dialog open={true} onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent
-        className="flex flex-col p-0 overflow-hidden bg-white border border-stone-100 shadow-2xl gap-0 outline-none animate-in fade-in duration-200"
-        style={{
-          width: "390px",
-          height: "min(844px, 92vh)",
-          borderRadius: "38px",
-          maxWidth: "390px",
-        }}
-        showCloseButton={false}
-      >
-        <h2 className="sr-only">Authentication Flow</h2>
-        <LoginFormContent onClose={onClose} onComplete={onComplete} />
-      </DialogContent>
-    </Dialog>
   );
 }

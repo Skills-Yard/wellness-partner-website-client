@@ -3,21 +3,22 @@
 import React from "react";
 import DesktopNav from "./DesktopNav";
 import { ArrowLeft, ChevronRight, Briefcase, LayoutDashboard, Wallet, Banknote, GraduationCap, HelpCircle, Gift, ShoppingBag, Send, Globe } from "lucide-react";
+import type { Partner } from "@/lib/api/types";
 
 interface ProfilePageProps {
-  city: string;
-  profession: string;
+  partner: Partner;
   onLogout: () => void;
   activeTab: "home" | "money" | "profile";
   onNavigate: (tab: "home" | "money" | "profile") => void;
+  onOpenBankAccount: () => void;
 }
 
 export default function ProfilePage({
-  city,
-  profession,
+  partner,
   onLogout,
   activeTab,
   onNavigate,
+  onOpenBankAccount,
 }: ProfilePageProps) {
 
   const MENU_GROUP_1 = [
@@ -47,17 +48,23 @@ export default function ProfilePage({
 
       {/* ── Profile Info ── */}
       <div className="px-5 pt-2 pb-6 flex items-center gap-4">
-        <div className="w-16 h-16 rounded-full overflow-hidden shrink-0 shadow-sm border border-stone-100">
-          <img src="/images/avatar-shruti.png" alt="Profile" className="w-full h-full object-cover" />
+        <div className="w-16 h-16 rounded-full overflow-hidden shrink-0 shadow-sm border border-stone-100 bg-stone-100 flex items-center justify-center">
+          <span className="text-xl font-extrabold text-stone-400">
+            {(partner.name ?? "?").charAt(0).toUpperCase()}
+          </span>
         </div>
         <div>
-          <h1 className="text-lg font-extrabold text-stone-900 tracking-tight leading-snug">Shruti Sharma</h1>
+          <h1 className="text-lg font-extrabold text-stone-900 tracking-tight leading-snug">
+            {partner.name ?? "Vellora Partner"}
+          </h1>
           <div className="flex items-center gap-1 bg-[#FDF8F3] px-2 py-0.5 mt-1 rounded-full w-fit">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="#C9851A">
               <circle cx="12" cy="12" r="10" />
               <path d="M9 12l2 2 4-4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-            <span className="text-[10px] font-bold text-[#C9851A]">Vellora Partner</span>
+            <span className="text-[10px] font-bold text-[#C9851A]">
+              {partner.type === "BUSINESS" ? "Vellora Business Partner" : "Vellora Partner"}
+            </span>
           </div>
         </div>
       </div>
@@ -82,14 +89,17 @@ export default function ProfilePage({
 
         {/* Card 2 */}
         <div className="bg-white rounded-3xl border border-stone-100 shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex flex-col p-2 mb-8">
-          <div className="flex items-center justify-between px-3 py-3 border-b border-stone-50 cursor-pointer hover:bg-stone-50 transition-colors">
+          <div
+            onClick={onOpenBankAccount}
+            className="flex items-center justify-between px-3 py-3 border-b border-stone-50 cursor-pointer hover:bg-stone-50 transition-colors"
+          >
             <div className="flex items-center gap-4">
               <div className="w-10 h-10 rounded-full bg-[#FDF8F3] flex items-center justify-center shrink-0">
                 <span className="text-[#C9851A] font-extrabold text-lg">₹</span>
               </div>
               <div>
                 <div className="text-sm font-bold text-stone-850 leading-tight">Financial details</div>
-                <div className="text-[10px] text-stone-500 font-medium">GST, PAN & bank information</div>
+                <div className="text-[10px] text-stone-500 font-medium">Bank account information</div>
               </div>
             </div>
             <ChevronRight className="w-4 h-4 text-stone-400" />
@@ -102,7 +112,7 @@ export default function ProfilePage({
               </div>
               <div>
                 <div className="text-sm font-bold text-stone-850 leading-tight">Send Whatsapp updates</div>
-                <div className="text-[10px] text-stone-500 font-medium">On</div>
+                <div className="text-[10px] text-stone-500 font-medium">{partner.isActive ? "On" : "Off"}</div>
               </div>
             </div>
             <ChevronRight className="w-4 h-4 text-stone-400" />
@@ -133,7 +143,7 @@ export default function ProfilePage({
         <a href="#" className="text-stone-500 hover:text-stone-800 transition-colors">Download the Vellora Partner app</a>
         <button
           onClick={onLogout}
-          className="text-stone-500 text-left hover:text-red-500 transition-colors mt-2"
+          className="text-stone-500 text-left hover:text-red-500 transition-colors mt-2 cursor-pointer"
         >
           Logout
         </button>

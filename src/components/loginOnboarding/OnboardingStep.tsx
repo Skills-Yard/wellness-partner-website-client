@@ -1,35 +1,49 @@
 import React from "react";
-import { ArrowLeft, ChevronDown } from "lucide-react";
+import { ArrowLeft, ChevronDown, Loader2 } from "lucide-react";
+import type { ServiceItem } from "@/lib/api/types";
 
 interface OnboardingStepProps {
   name: string;
   setName: (value: string) => void;
-  profession: string;
+  selectedServiceIds: string[];
+  services: ServiceItem[];
   city: string;
   agreed: boolean;
   setAgreed: (value: boolean) => void;
   hasSpecialChar: boolean;
   isFormValid: boolean;
   onBack: () => void;
-  onOpenWorkSelect: () => void;
+  onOpenServiceSelect: () => void;
   onOpenCitySelect: () => void;
   onComplete: () => void;
+  loading?: boolean;
+  error?: string | null;
 }
 
 export default function OnboardingStep({
   name,
   setName,
-  profession,
+  selectedServiceIds,
+  services,
   city,
   agreed,
   setAgreed,
   hasSpecialChar,
   isFormValid,
   onBack,
-  onOpenWorkSelect,
+  onOpenServiceSelect,
   onOpenCitySelect,
   onComplete,
+  loading,
+  error,
 }: OnboardingStepProps) {
+  const selectedLabel = selectedServiceIds.length
+    ? services
+        .filter((s) => selectedServiceIds.includes(s.id))
+        .map((s) => s.title || s.name)
+        .join(", ")
+    : "";
+
   return (
     <div className="flex flex-col flex-1 bg-white animate-in fade-in duration-300">
       {/* Top bar: back arrow + English button */}
@@ -84,30 +98,30 @@ export default function OnboardingStep({
             </p>
           </div>
 
-          {/* Work / Profession */}
+          {/* Services offered */}
           <div>
             <p className="text-sm font-bold text-stone-850 mb-2">
-              What work do you do?
+              What services do you offer?
             </p>
             <div
-              onClick={onOpenWorkSelect}
+              onClick={onOpenServiceSelect}
               className="flex items-center justify-between rounded-xl border border-stone-200 bg-[#F9F6F0] hover:bg-white hover:border-amber-400 px-4 py-3.5 cursor-pointer transition-all"
             >
               <span
-                className={`text-sm ${
-                  profession ? "text-stone-900 font-medium" : "text-stone-400"
+                className={`text-sm truncate ${
+                  selectedServiceIds.length ? "text-stone-900 font-medium" : "text-stone-400"
                 }`}
               >
-                {profession || "Select work"}
+                {selectedLabel || "Select the services you provide"}
               </span>
-              <ChevronDown className="h-4 w-4 text-stone-400 shrink-0" />
+              <ChevronDown className="h-4 w-4 text-stone-400 shrink-0 ml-2" />
             </div>
           </div>
 
           {/* City */}
           <div>
             <p className="text-sm font-bold text-stone-850 mb-2">
-              Where do you like?
+              Where do you work?
             </p>
             <div
               onClick={onOpenCitySelect}
@@ -156,20 +170,23 @@ export default function OnboardingStep({
             </span>
           </p>
         </label>
+
+        {error && <p className="mt-3 text-xs font-medium text-red-500">{error}</p>}
       </div>
 
       {/* Sticky Continue button */}
       <div className="px-5 pb-8 pt-3 shrink-0">
         <button
           onClick={onComplete}
-          disabled={!isFormValid}
+          disabled={!isFormValid || loading}
           id="onboarding-continue-btn"
-          className={`w-full rounded-2xl py-4 font-bold text-base transition-all active:scale-[0.98] ${
-            isFormValid
+          className={`w-full rounded-2xl py-4 font-bold text-base transition-all active:scale-[0.98] flex items-center justify-center gap-2 ${
+            isFormValid && !loading
               ? "bg-stone-900 text-white hover:bg-stone-800 shadow-lg cursor-pointer"
               : "bg-stone-100 text-stone-300 cursor-not-allowed"
           }`}
         >
+          {loading && <Loader2 className="h-4 w-4 animate-spin" />}
           Continue
         </button>
       </div>
