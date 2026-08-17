@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Vellora Partner",
+  title: "Eezit Partner",
   description: "Become a Vellora wellness partner — onboarding, KYC, training and bookings.",
 };
 
