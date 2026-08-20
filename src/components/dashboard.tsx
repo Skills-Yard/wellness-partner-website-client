@@ -10,6 +10,7 @@ import KycFlow from "../components/kyc/KycFlow";
 import WaitingScreen from "../components/status/WaitingScreen";
 import BlockedScreen from "../components/status/BlockedScreen";
 import PartnerHomescreen from "./home/PartnerHomescreen";
+import TrainingGateScreen from "./home/TrainingGateScreen";
 
 function FullScreenSpinner() {
   return (
@@ -65,12 +66,18 @@ export default function DashboardContent() {
         </OnboardingShell>
       );
 
-    // TRAINING and PENDING_APPROVAL both render the real dashboard rather
-    // than an isolated screen — PartnerHomescreen shows training progress
-    // (TrainingSection) inline and locks the rest of the dashboard's
-    // features until partner.status === APPROVED, so the partner sees their
-    // eventual dashboard taking shape instead of a dead end.
+    // Mandatory training isn't done yet — nothing else in the dashboard is
+    // reachable (not even a locked-looking preview of it), so this is its
+    // own full screen rather than something PartnerHomescreen renders
+    // inline. See TrainingGateScreen.
     case "TRAINING":
+      return <TrainingGateScreen partner={partner} onLogout={() => logout()} />;
+
+    // PENDING_APPROVAL and APPROVED both render the real dashboard —
+    // training is already complete by PENDING_APPROVAL, so PartnerHomescreen
+    // just locks the rest of its features (bookings, availability, ...)
+    // until partner.status === APPROVED, rather than hiding the dashboard's
+    // shape entirely.
     case "PENDING_APPROVAL":
     case "APPROVED":
       return <PartnerHomescreen partner={partner} onLogout={() => logout()} />;

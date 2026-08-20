@@ -127,3 +127,43 @@
     @apply font-sans;
   }
 }
+
+/* Shared motion primitives — registering these as --animate-* tokens gives
+   Tailwind v4 plain `animate-shimmer` / `animate-fade-in-up` utilities
+   instead of writing out arbitrary keyframe values at every call site. */
+@theme {
+  --animate-shimmer: shimmer 1.6s ease-in-out infinite;
+  --animate-fade-in-up: fade-in-up 0.35s ease-out both;
+  --animate-expand: expand 0.25s ease-out both;
+}
+
+@keyframes shimmer {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes expand {
+  from {
+    opacity: 0;
+    transform: scaleY(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}

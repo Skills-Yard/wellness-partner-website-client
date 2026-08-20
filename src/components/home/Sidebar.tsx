@@ -5,6 +5,7 @@ import {
   Home,
   Briefcase,
   CalendarClock,
+  GraduationCap,
   Users,
   Landmark,
   IndianRupee,
@@ -16,14 +17,18 @@ import {
 } from "lucide-react";
 import type { Partner } from "@/lib/api/types";
 
-export type SidebarView = "home" | "bookings" | "availability" | "team" | "bank" | "money" | "profile";
+export type SidebarView = "home" | "bookings" | "availability" | "team" | "bank" | "training" | "money" | "profile";
 
 interface SidebarProps {
   partner: Partner;
   activeView: SidebarView;
   isApproved: boolean;
+  // Mandatory-training gate mode (see TrainingGateScreen) — the nav list
+  // collapses to just "Training", every other destination is unreachable
+  // until training is done rather than merely locked-looking.
+  trainingOnly?: boolean;
   onNavigateTab: (tab: "home" | "money" | "profile") => void;
-  onOpenSubView: (view: "bookings" | "availability" | "team" | "bank") => void;
+  onOpenSubView: (view: "bookings" | "availability" | "team" | "bank" | "training") => void;
   onLogout: () => void;
 }
 
@@ -52,6 +57,7 @@ export default function Sidebar({
   partner,
   activeView,
   isApproved,
+  trainingOnly = false,
   onNavigateTab,
   onOpenSubView,
   onLogout,
@@ -71,23 +77,32 @@ export default function Sidebar({
     });
   };
 
-  const items: NavItem[] = [
-    { key: "home", label: "Home", icon: Home, go: () => onNavigateTab("home") },
-    { key: "bookings", label: "Bookings", icon: Briefcase, locked: !isApproved, go: () => onOpenSubView("bookings") },
-    {
-      key: "availability",
-      label: "Availability & slots",
-      icon: CalendarClock,
-      locked: !isApproved,
-      go: () => onOpenSubView("availability"),
-    },
-    ...(partner.type === "BUSINESS"
-      ? [{ key: "team" as const, label: "Team", icon: Users, locked: !isApproved, go: () => onOpenSubView("team") }]
-      : []),
-    { key: "bank", label: "Bank account", icon: Landmark, locked: !isApproved, go: () => onOpenSubView("bank") },
-    { key: "money", label: "Money", icon: IndianRupee, go: () => onNavigateTab("money") },
-    { key: "profile", label: "Profile", icon: User, go: () => onNavigateTab("profile") },
-  ];
+  // Training-only mode collapses the whole nav to a single marker — every
+  // other destination is genuinely unreachable while mandatory training is
+  // incomplete, not just shown locked (see TrainingGateScreen).
+  const items: NavItem[] = trainingOnly
+    ? [{ key: "training", label: "Training", icon: GraduationCap, go: () => {} }]
+    : [
+        { key: "home", label: "Home", icon: Home, go: () => onNavigateTab("home") },
+        { key: "bookings", label: "Bookings", icon: Briefcase, locked: !isApproved, go: () => onOpenSubView("bookings") },
+        {
+          key: "availability",
+          label: "Availability & slots",
+          icon: CalendarClock,
+          locked: !isApproved,
+          go: () => onOpenSubView("availability"),
+        },
+        ...(partner.type === "BUSINESS"
+          ? [{ key: "team" as const, label: "Team", icon: Users, locked: !isApproved, go: () => onOpenSubView("team") }]
+          : []),
+        { key: "bank", label: "Bank account", icon: Landmark, locked: !isApproved, go: () => onOpenSubView("bank") },
+        // Never locked — by the time the normal sidebar is showing at all
+        // (PENDING_APPROVAL/APPROVED), mandatory training is already done,
+        // so this is purely for rewatching.
+        { key: "training", label: "Training", icon: GraduationCap, go: () => onOpenSubView("training") },
+        { key: "money", label: "Money", icon: IndianRupee, go: () => onNavigateTab("money") },
+        { key: "profile", label: "Profile", icon: User, go: () => onNavigateTab("profile") },
+      ];
 
   const initials = (partner.name ?? "?").trim().charAt(0).toUpperCase() || "?";
 

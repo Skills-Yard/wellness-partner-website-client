@@ -1,14 +1,14 @@
 "use client";
 
 import React, { useState } from "react";
-import { ChevronRight, CalendarClock, Briefcase, Users, Star, TrendingUp, Lock, Landmark } from "lucide-react";
+import { ChevronRight, CalendarClock, Briefcase, GraduationCap, Users, Star, TrendingUp, Lock, Landmark } from "lucide-react";
 import BottomNav from "./BottomNav";
 import Sidebar from "./Sidebar";
 import PartnerStatusHeader from "./PartnerStatusHeader";
 import TodayActivity from "./TodayActivity";
 import ProfilePage from "./ProfilePage";
 import MoneyPage from "./MoneyPage";
-import TrainingSection from "./TrainingSection";
+import TrainingCenter from "./TrainingCenter";
 import BookingsPanel from "./panels/BookingsPanel";
 import AvailabilityPanel from "./panels/AvailabilityPanel";
 import TeamPanel from "./panels/TeamPanel";
@@ -20,7 +20,7 @@ interface PartnerHomescreenProps {
   onLogout: () => void;
 }
 
-type SubView = "bookings" | "availability" | "team" | "bank" | null;
+type SubView = "bookings" | "availability" | "team" | "bank" | "training" | null;
 
 function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string | number }) {
   return (
@@ -78,11 +78,15 @@ export default function PartnerHomescreen({ partner, onLogout }: PartnerHomescre
   const isApproved = partner.status === "APPROVED";
 
   // Manage cards / sidebar entries route to a working panel only once the
-  // partner is fully approved — before that (TRAINING/PENDING_APPROVAL)
-  // they're shown locked rather than hidden, so the dashboard's shape
-  // doesn't change out from under the partner the moment they're approved.
+  // partner is fully approved — before that (this component only ever
+  // renders for PENDING_APPROVAL now; TRAINING goes to TrainingGateScreen
+  // instead) they're shown locked rather than hidden, so the dashboard's
+  // shape doesn't change out from under the partner the moment they're
+  // approved. Training is the one exception — mandatory training is
+  // already done by the time this component renders at all, so rewatching
+  // it is never gated.
   const openSubView = (view: Exclude<SubView, null>) => {
-    if (!isApproved) return;
+    if (view !== "training" && !isApproved) return;
     setSubView(view);
   };
 
@@ -101,6 +105,8 @@ export default function PartnerHomescreen({ partner, onLogout }: PartnerHomescre
     content = <TeamPanel onBack={() => setSubView(null)} />;
   } else if (subView === "bank") {
     content = <BankAccountPanel onBack={() => setSubView(null)} />;
+  } else if (subView === "training") {
+    content = <TrainingCenter partner={partner} onBack={() => setSubView(null)} />;
   } else if (activeTab === "profile") {
     content = <ProfilePage partner={partner} onLogout={onLogout} onBack={() => goToTab("home")} onOpenBankAccount={() => openSubView("bank")} />;
   } else if (activeTab === "money") {
@@ -120,8 +126,18 @@ export default function PartnerHomescreen({ partner, onLogout }: PartnerHomescre
           {/* Today's progress + live booking mini-tracker — only meaningful once bookings can actually flow in */}
           {isApproved && <TodayActivity onOpenBookings={() => openSubView("bookings")} />}
 
-          {/* Training — only relevant (and only ever rendered here) pre-approval */}
-          {!isApproved && <TrainingSection partner={partner} />}
+          {/* This component only ever renders for PENDING_APPROVAL/APPROVED — TRAINING goes to
+              TrainingGateScreen instead — so the only non-approved status left here is a final
+              review already in progress; training material stays reachable via the sidebar/manage
+              cards below rather than being shown inline again. */}
+          {!isApproved && (
+            <div className="rounded-2xl border border-stone-100 bg-[#FAF9F6] p-5">
+              <p className="text-sm font-bold text-stone-900">Pending final approval</p>
+              <p className="text-xs text-stone-500 mt-1 leading-relaxed">
+                Your training is complete. Our team is doing a final review before you go live.
+              </p>
+            </div>
+          )}
 
           {/* Stats — meaningless before approval, so only shown once live */}
           {isApproved && (
@@ -143,6 +159,7 @@ export default function PartnerHomescreen({ partner, onLogout }: PartnerHomescre
                 <ManageCard icon={<Users className="h-5 w-5" />} title="Team" onClick={() => openSubView("team")} locked={!isApproved} />
               )}
               <ManageCard icon={<Landmark className="h-5 w-5" />} title="Bank account" onClick={() => openSubView("bank")} locked={!isApproved} />
+              <ManageCard icon={<GraduationCap className="h-5 w-5" />} title="Training" onClick={() => openSubView("training")} />
             </div>
           </div>
         </div>

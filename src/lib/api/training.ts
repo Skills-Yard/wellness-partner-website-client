@@ -1,6 +1,9 @@
 import { request } from "./client";
-import type { PartnerTrainingProgress, TrainingLesson, TrainingModule, TrainingStatus } from "./types";
+import type { PartnerTrainingProgress, TrainingStatus } from "./types";
 
+// Returns every course assigned to this partner, each with its modules and
+// lessons already nested (course.modules[].lessons[]) — no separate
+// fetch-per-module/fetch-per-lesson round trip needed.
 export function getMyCourses() {
   return request<PartnerTrainingProgress[]>("/partner/training");
 }
@@ -10,12 +13,4 @@ export function updateMyCourseStatus(courseId: string, status: TrainingStatus, s
     method: "PATCH",
     body: { status, score },
   });
-}
-
-export function getCourseModules(courseId: string) {
-  return request<TrainingModule[]>(`/training/courses/${courseId}/modules`);
-}
-
-export function getModuleLessons(moduleId: string) {
-  return request<TrainingLesson[]>(`/training/modules/${moduleId}/lessons`);
 }

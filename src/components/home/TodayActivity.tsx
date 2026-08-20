@@ -164,7 +164,7 @@ function TodayProgressCard({
 /**
  * "Today's progress" + a mini live-tracking card for whatever booking is
  * currently active. Fetches the partner's own bookings once on mount, same
- * fetch-on-mount pattern as BookingsPanel/TrainingSection elsewhere in this
+ * fetch-on-mount pattern as BookingsPanel/TrainingCenter elsewhere in this
  * app; the only difference here is a second effect that re-polls every 30s,
  * but only while a booking is actually live, so the card doesn't go stale
  * mid-job without the partner needing to manually reload. A full tracking

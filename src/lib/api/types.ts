@@ -182,6 +182,12 @@ export interface TrainingCourse {
   estimatedMinutes: number;
   displayOrder: number;
   isActive: boolean;
+  // Nested when this course arrives via GET /partner/training (see
+  // PartnerTrainingProgress.course below) — that's the only place this app
+  // reads courses from, so TrainingCenter never needs the standalone
+  // modules/lessons endpoints. Optional since nothing guarantees every
+  // caller of this type has them inlined.
+  modules?: TrainingModule[];
 }
 
 export interface TrainingModule {
@@ -190,6 +196,9 @@ export interface TrainingModule {
   title: string;
   displayOrder: number;
   isActive: boolean;
+  // See TrainingCourse.modules above — nested when the course came from
+  // GET /partner/training.
+  lessons?: TrainingLesson[];
 }
 
 export interface TrainingLesson {
