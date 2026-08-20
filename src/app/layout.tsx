@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Eezit Partner",
-  description: "Become a Vellora wellness partner — onboarding, KYC, training and bookings.",
+  description: "Become an Eezit wellness partner — onboarding, KYC, training and bookings.",
 };
 
 export default function RootLayout({

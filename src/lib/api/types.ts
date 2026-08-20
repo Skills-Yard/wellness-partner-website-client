@@ -117,6 +117,8 @@ export interface ServiceItem {
   slug?: string;
   cardTitle: string;
   cardSubtitle?: string;
+  thumbnailKey?: string | null;
+  thumbnailType?: "IMAGE" | "VIDEO";
   subCategoryId: string;
   // NOTE: GET /catalog/service-items (ClientServiceItemController) returns
   // the raw Prisma entity, not ServiceItemResponseDto's shaped `category`
@@ -124,7 +126,12 @@ export interface ServiceItem {
   // that the sibling category/sub-category controllers have, so the DTO's
   // field renaming/whitelisting never actually applies. Reflects the real
   // wire shape (subCategory, not category) rather than the DTO's intent.
-  subCategory: ServiceSubCategory;
+  //
+  // Only present on that endpoint's response, though — the serviceItem
+  // embedded in GET /partner/profile's partnerServices[] is a leaner shape
+  // that carries just subCategoryId, no nested subCategory/category.
+  // Optional here to reflect that.
+  subCategory?: ServiceSubCategory;
   isActive: boolean;
 }
 
@@ -304,6 +311,7 @@ export interface Partner {
   totalReviews: number;
   isActive: boolean;
   isOnline: boolean;
+  whatsappOptIn: boolean;
   onboardingStep: number;
   approvedAt?: string | null;
   kyc?: PartnerKyc | null;

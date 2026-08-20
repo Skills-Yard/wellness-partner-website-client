@@ -150,7 +150,10 @@ export default function ProfileSetupFlow() {
     setSubmitError(null);
     try {
       const serviceItemIds = items
-        .filter((item) => selectedCategoryIds.includes(item.subCategory?.category?.id))
+        .filter((item) => {
+          const categoryId = item.subCategory?.category?.id;
+          return categoryId !== undefined && selectedCategoryIds.includes(categoryId);
+        })
         .map((item) => item.id);
 
       if (serviceItemIds.length === 0) {

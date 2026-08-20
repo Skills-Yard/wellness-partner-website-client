@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useState } from "react";
-import { ChevronRight, CalendarClock, Briefcase, Users, Star, TrendingUp, Lock } from "lucide-react";
+import { ChevronRight, CalendarClock, Briefcase, Users, Star, TrendingUp, Lock, Landmark } from "lucide-react";
 import BottomNav from "./BottomNav";
-import DesktopNav from "./DesktopNav";
-import HeroBanner from "./HeroBanner";
+import Sidebar from "./Sidebar";
+import PartnerStatusHeader from "./PartnerStatusHeader";
+import TodayActivity from "./TodayActivity";
 import ProfilePage from "./ProfilePage";
 import MoneyPage from "./MoneyPage";
 import TrainingSection from "./TrainingSection";
@@ -76,82 +77,91 @@ export default function PartnerHomescreen({ partner, onLogout }: PartnerHomescre
 
   const isApproved = partner.status === "APPROVED";
 
-  // Manage cards route to a working panel only once the partner is fully
-  // approved — before that (TRAINING/PENDING_APPROVAL) they're shown
-  // locked rather than hidden, so the dashboard's shape doesn't change
-  // out from under the partner the moment they're approved.
+  // Manage cards / sidebar entries route to a working panel only once the
+  // partner is fully approved — before that (TRAINING/PENDING_APPROVAL)
+  // they're shown locked rather than hidden, so the dashboard's shape
+  // doesn't change out from under the partner the moment they're approved.
   const openSubView = (view: Exclude<SubView, null>) => {
     if (!isApproved) return;
     setSubView(view);
   };
 
-  if (subView === "bookings") return <BookingsPanel onBack={() => setSubView(null)} />;
-  if (subView === "availability") return <AvailabilityPanel partner={partner} onBack={() => setSubView(null)} />;
-  if (subView === "team") return <TeamPanel onBack={() => setSubView(null)} />;
-  if (subView === "bank") return <BankAccountPanel onBack={() => setSubView(null)} />;
+  // Switching top-level tabs always leaves any drill-down subview behind.
+  const goToTab = (tab: "home" | "money" | "profile") => {
+    setSubView(null);
+    setActiveTab(tab);
+  };
 
-  if (activeTab === "profile") {
-    return (
-      <ProfilePage
-        partner={partner}
-        onLogout={onLogout}
-        activeTab={activeTab}
-        onNavigate={setActiveTab}
-        onOpenBankAccount={() => openSubView("bank")}
-      />
-    );
-  }
+  let content: React.ReactNode;
+  if (subView === "bookings") {
+    content = <BookingsPanel onBack={() => setSubView(null)} />;
+  } else if (subView === "availability") {
+    content = <AvailabilityPanel partner={partner} onBack={() => setSubView(null)} />;
+  } else if (subView === "team") {
+    content = <TeamPanel onBack={() => setSubView(null)} />;
+  } else if (subView === "bank") {
+    content = <BankAccountPanel onBack={() => setSubView(null)} />;
+  } else if (activeTab === "profile") {
+    content = <ProfilePage partner={partner} onLogout={onLogout} onBack={() => goToTab("home")} onOpenBankAccount={() => openSubView("bank")} />;
+  } else if (activeTab === "money") {
+    content = <MoneyPage />;
+  } else {
+    content = (
+      <div className="flex flex-col pb-28 lg:pb-10">
+        <PartnerStatusHeader partner={partner} />
 
-  if (activeTab === "money") {
-    return <MoneyPage activeTab={activeTab} onNavigate={setActiveTab} />;
-  }
-
-  return (
-    <div className="min-h-screen bg-white flex flex-col pb-28 lg:pb-0">
-      <DesktopNav active={activeTab} onNavigate={setActiveTab} />
-      <HeroBanner />
-
-      <div className="flex-1 w-full max-w-4xl mx-auto px-4 sm:px-8 py-6 flex flex-col gap-6">
-        {/* Welcome */}
-        <div>
-          <h2 className="text-lg sm:text-2xl font-extrabold text-stone-900 leading-snug">
-            Welcome{partner.name ? `, ${partner.name.split(" ")[0]}` : ""}
-          </h2>
-          <p className="text-sm text-stone-450 mt-1">
+        <div className="flex-1 w-full max-w-4xl mx-auto px-4 sm:px-8 py-6 flex flex-col gap-6">
+          <p className="text-sm text-stone-500 -mt-2">
             {isApproved
-              ? `You're live in ${partner.city ?? "your area"} as an approved Vellora partner.`
+              ? `You're live in ${partner.city ?? "your area"} as an approved Eezit partner.`
               : "Finish the steps below to get approved and start taking bookings."}
           </p>
-        </div>
 
-        {/* Training — only relevant (and only ever rendered here) pre-approval */}
-        {!isApproved && <TrainingSection partner={partner} />}
+          {/* Today's progress + live booking mini-tracker — only meaningful once bookings can actually flow in */}
+          {isApproved && <TodayActivity onOpenBookings={() => openSubView("bookings")} />}
 
-        {/* Stats — meaningless before approval, so only shown once live */}
-        {isApproved && (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            <StatCard icon={<Briefcase className="h-5 w-5" />} label="Total bookings" value={partner.totalBookings} />
-            <StatCard icon={<Star className="h-5 w-5" />} label="Average rating" value={partner.averageRating.toFixed(1)} />
-            <StatCard icon={<TrendingUp className="h-5 w-5" />} label="Completion rate" value={`${Math.round(partner.completionRate)}%`} />
-            <StatCard icon={<CalendarClock className="h-5 w-5" />} label="Reviews" value={partner.totalReviews} />
-          </div>
-        )}
+          {/* Training — only relevant (and only ever rendered here) pre-approval */}
+          {!isApproved && <TrainingSection partner={partner} />}
 
-        {/* Manage */}
-        <div>
-          <h3 className="text-base sm:text-lg font-extrabold text-stone-900 mb-3">Manage your work</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <ManageCard icon={<Briefcase className="h-5 w-5" />} title="Bookings" onClick={() => openSubView("bookings")} locked={!isApproved} />
-            <ManageCard icon={<CalendarClock className="h-5 w-5" />} title="Availability & slots" onClick={() => openSubView("availability")} locked={!isApproved} />
-            {partner.type === "BUSINESS" && (
-              <ManageCard icon={<Users className="h-5 w-5" />} title="Team" onClick={() => openSubView("team")} locked={!isApproved} />
-            )}
-            <ManageCard icon={<span className="font-extrabold">₹</span>} title="Bank account" onClick={() => openSubView("bank")} locked={!isApproved} />
+          {/* Stats — meaningless before approval, so only shown once live */}
+          {isApproved && (
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+              <StatCard icon={<Briefcase className="h-5 w-5" />} label="Total bookings" value={partner.totalBookings} />
+              <StatCard icon={<Star className="h-5 w-5" />} label="Average rating" value={partner.averageRating.toFixed(1)} />
+              <StatCard icon={<TrendingUp className="h-5 w-5" />} label="Completion rate" value={`${Math.round(partner.completionRate)}%`} />
+              <StatCard icon={<CalendarClock className="h-5 w-5" />} label="Reviews" value={partner.totalReviews} />
+            </div>
+          )}
+
+          {/* Manage — also reachable from the sidebar on desktop; kept here too so mobile (no sidebar) always has a way in */}
+          <div>
+            <h3 className="text-base sm:text-lg font-extrabold text-stone-900 mb-3">Manage your work</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <ManageCard icon={<Briefcase className="h-5 w-5" />} title="Bookings" onClick={() => openSubView("bookings")} locked={!isApproved} />
+              <ManageCard icon={<CalendarClock className="h-5 w-5" />} title="Availability & slots" onClick={() => openSubView("availability")} locked={!isApproved} />
+              {partner.type === "BUSINESS" && (
+                <ManageCard icon={<Users className="h-5 w-5" />} title="Team" onClick={() => openSubView("team")} locked={!isApproved} />
+              )}
+              <ManageCard icon={<Landmark className="h-5 w-5" />} title="Bank account" onClick={() => openSubView("bank")} locked={!isApproved} />
+            </div>
           </div>
         </div>
       </div>
+    );
+  }
 
-      <BottomNav active={activeTab} onNavigate={setActiveTab} />
+  return (
+    <div className="min-h-screen bg-white flex flex-col lg:flex-row">
+      <Sidebar
+        partner={partner}
+        activeView={subView ?? activeTab}
+        isApproved={isApproved}
+        onNavigateTab={goToTab}
+        onOpenSubView={openSubView}
+        onLogout={onLogout}
+      />
+      <div className="flex-1 min-w-0">{content}</div>
+      {subView === null && <BottomNav active={activeTab} onNavigate={goToTab} />}
     </div>
   );
 }

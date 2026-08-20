@@ -77,7 +77,7 @@ export default function BankAccountPanel({ onBack }: { onBack: () => void }) {
         <div className="px-5 max-w-md w-full space-y-4">
           {account?.isVerified && (
             <div className="flex items-center gap-2 rounded-xl bg-green-50 border border-green-200 px-3 py-2 text-xs font-semibold text-green-700">
-              <ShieldCheck className="h-4 w-4" /> Verified by Vellora
+              <ShieldCheck className="h-4 w-4" /> Verified by Eezit
             </div>
           )}
 

@@ -1,20 +1,11 @@
 'use client';
 
 import React from "react";
-import BottomNav from "./BottomNav";
-import DesktopNav from "./DesktopNav";
 import { ChevronLeft, ChevronRight, Settings, Bell, Calendar, Wallet, Banknote, Clock, ArrowRight, User } from "lucide-react";
 
-interface MoneyPageProps {
-  activeTab: "home" | "money" | "profile";
-  onNavigate: (tab: "home" | "money" | "profile") => void;
-}
-
-export default function MoneyPage({ activeTab, onNavigate }: MoneyPageProps) {
+export default function MoneyPage() {
   return (
-    <div className="min-h-screen bg-[#FDFDFC] flex flex-col pb-28 lg:pb-0 text-stone-900 font-sans">
-      <DesktopNav active={activeTab} onNavigate={onNavigate} />
-      
+    <div className="min-h-screen bg-[#FDFDFC] flex flex-col pb-28 lg:pb-10 text-stone-900 font-sans">
       {/* ── Top bar ── */}
       <div className="px-5 pt-4 pb-2 flex items-center justify-between">
         <div className="w-10 h-10 border border-stone-200 rounded-2xl flex items-center justify-center bg-white shadow-sm cursor-pointer hover:bg-stone-50">
@@ -153,8 +144,6 @@ export default function MoneyPage({ activeTab, onNavigate }: MoneyPageProps) {
           </div>
         </div>
       </div>
-
-      <BottomNav active={activeTab} onNavigate={onNavigate} />
     </div>
   );
 }

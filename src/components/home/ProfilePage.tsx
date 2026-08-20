@@ -1,23 +1,20 @@
 'use client';
 
 import React from "react";
-import DesktopNav from "./DesktopNav";
 import { ArrowLeft, ChevronRight, Briefcase, LayoutDashboard, Wallet, Banknote, GraduationCap, HelpCircle, Gift, ShoppingBag, Send, Globe } from "lucide-react";
 import type { Partner } from "@/lib/api/types";
 
 interface ProfilePageProps {
   partner: Partner;
   onLogout: () => void;
-  activeTab: "home" | "money" | "profile";
-  onNavigate: (tab: "home" | "money" | "profile") => void;
+  onBack: () => void;
   onOpenBankAccount: () => void;
 }
 
 export default function ProfilePage({
   partner,
   onLogout,
-  activeTab,
-  onNavigate,
+  onBack,
   onOpenBankAccount,
 }: ProfilePageProps) {
 
@@ -33,13 +30,11 @@ export default function ProfilePage({
   ];
 
   return (
-    <div className="min-h-screen bg-white flex flex-col font-sans lg:pb-0">
-      <DesktopNav active={activeTab} onNavigate={onNavigate} />
-
+    <div className="min-h-screen bg-white flex flex-col font-sans pb-28 lg:pb-10">
       {/* ── Top Header with Back button ── */}
       <div className="px-5 pt-6 pb-2">
         <div
-          onClick={() => onNavigate("home")}
+          onClick={onBack}
           className="w-10 h-10 border border-stone-200 rounded-2xl flex items-center justify-center bg-white shadow-sm cursor-pointer hover:bg-stone-50 transition-colors"
         >
           <ArrowLeft className="w-5 h-5 text-stone-700" strokeWidth={1.5} />
@@ -63,7 +58,7 @@ export default function ProfilePage({
               <path d="M9 12l2 2 4-4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
             <span className="text-[10px] font-bold text-[#C9851A]">
-              {partner.type === "BUSINESS" ? "Vellora Business Partner" : "Vellora Partner"}
+              {partner.type === "BUSINESS" ? "Eezit Business Partner" : "Eezit Partner"}
             </span>
           </div>
         </div>
@@ -112,7 +107,7 @@ export default function ProfilePage({
               </div>
               <div>
                 <div className="text-sm font-bold text-stone-850 leading-tight">Send Whatsapp updates</div>
-                <div className="text-[10px] text-stone-500 font-medium">{partner.isActive ? "On" : "Off"}</div>
+                <div className="text-[10px] text-stone-500 font-medium">{partner.whatsappOptIn ? "On" : "Off"}</div>
               </div>
             </div>
             <ChevronRight className="w-4 h-4 text-stone-400" />
