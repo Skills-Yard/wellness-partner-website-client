@@ -19,6 +19,15 @@ const STATUS_COLORS: Partial<Record<BookingStatus, string>> = {
   DISPUTED: "bg-red-50 text-red-700",
 };
 
+// scheduledDate is a real DateTime column on the backend, so it comes back
+// as a full ISO instant (e.g. "2026-08-21T00:00:00.000Z") rather than a
+// plain "YYYY-MM-DD" string — same thing AvailabilityPanel's formatDate and
+// TodayActivity's today-matching had to account for.
+function formatScheduledDate(dateStr: string) {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+}
+
 function BookingCard({ booking, onAction }: { booking: Booking; onAction: () => void }) {
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -61,7 +70,7 @@ function BookingCard({ booking, onAction }: { booking: Booking; onAction: () => 
         </span>
       </div>
       <p className="text-[11px] text-stone-500">
-        {booking.scheduledDate} · {booking.scheduledTime}
+        {formatScheduledDate(booking.scheduledDate)} · {booking.scheduledTime}
       </p>
       <p className="text-[11px] text-stone-400 mt-0.5">
         You earn ₹{(booking.partnerEarning / 100).toFixed(0)}

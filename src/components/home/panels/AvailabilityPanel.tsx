@@ -230,7 +230,8 @@ export default function AvailabilityPanel({ partner, onBack }: { partner: Partne
   const loadSlots = async () => {
     const today = new Date();
     const dateFrom = today.toISOString().slice(0, 10);
-    const dateTo = new Date(today.getTime() + 13 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    // 6 days out + today = a 7-day window.
+    const dateTo = new Date(today.getTime() + 6 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const list = await slotsApi.getSlots({ dateFrom, dateTo });
     setSlots(list);
   };
@@ -336,9 +337,15 @@ export default function AvailabilityPanel({ partner, onBack }: { partner: Partne
 
   const activeDays = DAYS.filter((d) => schedules[d.key].isActive);
 
+  // slot.date comes back as a full ISO instant (e.g. "2026-08-21T00:00:00.000Z")
+  // — it's a real DateTime column on the backend, not a plain "YYYY-MM-DD"
+  // string — so parsing it directly (not appending another "T00:00:00", which
+  // produced an invalid string and showed as "Invalid Date") and formatting
+  // in UTC keeps this showing the same calendar day the backend meant,
+  // regardless of the viewer's own timezone.
   const formatDate = (dateStr: string) => {
-    const d = new Date(`${dateStr}T00:00:00`);
-    return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+    const d = new Date(dateStr);
+    return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
   };
 
   const saveButtonContent = saving ? (
@@ -544,14 +551,14 @@ export default function AvailabilityPanel({ partner, onBack }: { partner: Partne
             </div>
           </div>
 
-          {/* ── Next 14 days — shared by both layouts ── */}
+          {/* ── Next 7 days — shared by both layouts ── */}
           <div className="bg-[#FAF9F6] rounded-2xl border border-stone-100 p-5 relative overflow-hidden">
             <div className="flex items-start gap-4">
               <div className="w-11 h-11 rounded-full bg-[#FDF3E7] flex items-center justify-center shrink-0">
                 <Calendar className="h-5 w-5 text-[#C9851A]" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-bold uppercase tracking-wide text-stone-500">Next 14 days</p>
+                <p className="text-xs font-bold uppercase tracking-wide text-stone-500">Next 7 days</p>
                 <p className="text-xs text-stone-500 mt-1.5 leading-relaxed">
                   Tap an open slot to block it, or a blocked one to reopen it. Booked slots can&apos;t be changed
                   here.
