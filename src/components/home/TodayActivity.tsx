@@ -219,7 +219,11 @@ export default function TodayActivity({ onOpenBookings }: { onOpenBookings: () =
   }
 
   const today = todayDateString();
-  const todayBookings = bookings.filter((b) => b.scheduledDate === today);
+  // scheduledDate is a real DateTime column on the backend, so it comes back
+  // as a full ISO instant (e.g. "2026-08-21T00:00:00.000Z") rather than a
+  // plain "YYYY-MM-DD" string — compare just the date portion, same fix as
+  // AvailabilityPanel's formatDate needed for the same underlying reason.
+  const todayBookings = bookings.filter((b) => b.scheduledDate.slice(0, 10) === today);
   const completedToday = todayBookings.filter((b) => b.status === "COMPLETED");
   const upcomingToday = todayBookings
     .filter((b) => UPCOMING_STATUSES.includes(b.status))

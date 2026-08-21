@@ -1,14 +1,16 @@
 "use client";
 
-import React, { useState } from "react";
-import { ChevronRight, CalendarClock, Briefcase, GraduationCap, Users, Star, TrendingUp, Lock, Landmark } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { ChevronRight, CalendarClock, Briefcase, GraduationCap, Users, Star, TrendingUp, Lock, Landmark, Loader2 } from "lucide-react";
+import { useAuth } from "@/lib/auth/AuthProvider";
 import BottomNav from "./BottomNav";
 import Sidebar from "./Sidebar";
 import PartnerStatusHeader from "./PartnerStatusHeader";
 import TodayActivity from "./TodayActivity";
 import ProfilePage from "./ProfilePage";
 import MoneyPage from "./MoneyPage";
-import TrainingCenter from "./TrainingCenter";
+import TrainingCenter, { TRAINING_JUST_COMPLETED_KEY } from "./TrainingCenter";
+import TrainingCompleteModal from "./TrainingCompleteModal";
 import BookingsPanel from "./panels/BookingsPanel";
 import AvailabilityPanel from "./panels/AvailabilityPanel";
 import TeamPanel from "./panels/TeamPanel";
@@ -73,10 +75,37 @@ function ManageCard({
 }
 
 export default function PartnerHomescreen({ partner, onLogout }: PartnerHomescreenProps) {
+  const { refreshProfile } = useAuth();
   const [activeTab, setActiveTab] = useState<"home" | "money" | "profile">("home");
   const [subView, setSubView] = useState<SubView>(null);
+  const [showTrainingCelebration, setShowTrainingCelebration] = useState(false);
+  const [checkingApproval, setCheckingApproval] = useState(false);
 
   const isApproved = partner.status === "APPROVED";
+
+  // TrainingCenter sets this flag right before the completion that finishes
+  // every mandatory course — that same action flips partner.status TRAINING
+  // -> PENDING_APPROVAL server-side, which swaps TrainingGateScreen out for
+  // this component in the same tick, so the celebration has to pick up here
+  // instead of showing on the screen that's about to unmount.
+  useEffect(() => {
+    if (window.sessionStorage.getItem(TRAINING_JUST_COMPLETED_KEY) === "true") {
+      window.sessionStorage.removeItem(TRAINING_JUST_COMPLETED_KEY);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot flag read on mount, not a render-loop hazard
+      setShowTrainingCelebration(true);
+    }
+  }, []);
+
+  const handleCheckApproval = async () => {
+    setCheckingApproval(true);
+    try {
+      await refreshProfile();
+    } catch {
+      // best-effort — partner can just try the button again
+    } finally {
+      setCheckingApproval(false);
+    }
+  };
 
   // Manage cards / sidebar entries route to a working panel only once the
   // partner is fully approved — before that (this component only ever
@@ -141,11 +170,21 @@ export default function PartnerHomescreen({ partner, onLogout }: PartnerHomescre
               review already in progress; training material stays reachable via the sidebar/manage
               cards below rather than being shown inline again. */}
           {!isApproved && (
-            <div className="rounded-2xl border border-stone-100 bg-[#FAF9F6] p-5">
-              <p className="text-sm font-bold text-stone-900">Pending final approval</p>
-              <p className="text-xs text-stone-500 mt-1 leading-relaxed">
-                Your training is complete. Our team is doing a final review before you go live.
-              </p>
+            <div className="rounded-2xl border border-stone-100 bg-[#FAF9F6] p-5 flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-bold text-stone-900">Pending final approval</p>
+                <p className="text-xs text-stone-500 mt-1 leading-relaxed">
+                  Your training is complete. Our team is doing a final review before you go live.
+                </p>
+              </div>
+              <button
+                onClick={handleCheckApproval}
+                disabled={checkingApproval}
+                className="shrink-0 flex items-center gap-1.5 rounded-full border border-stone-200 bg-white px-3 py-1.5 text-[11px] font-bold text-stone-600 hover:bg-stone-50 transition-colors cursor-pointer disabled:opacity-60"
+              >
+                {checkingApproval && <Loader2 className="h-3 w-3 animate-spin" />}
+                Check now
+              </button>
             </div>
           )}
 
@@ -189,6 +228,14 @@ export default function PartnerHomescreen({ partner, onLogout }: PartnerHomescre
       />
       <div className="flex-1 min-w-0">{content}</div>
       {subView === null && <BottomNav active={activeTab} onNavigate={goToTab} />}
+
+      {showTrainingCelebration && (
+        <TrainingCompleteModal
+          onClose={() => setShowTrainingCelebration(false)}
+          onCheckStatus={handleCheckApproval}
+          checking={checkingApproval}
+        />
+      )}
     </div>
   );
 }

@@ -6,29 +6,43 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import * as trainingApi from "@/lib/api/training";
 import { ApiError } from "@/lib/api/client";
 import { Shimmer } from "@/components/ui/shimmer";
+import { AchievementToast, useAchievementToast } from "./AchievementToast";
 import type { Partner, PartnerTrainingProgress, TrainingLesson } from "@/lib/api/types";
 
+// Read by PartnerHomescreen on mount — set here right before the completion
+// that finishes every mandatory course, since that same action calls
+// refreshProfile(), which flips partner.status TRAINING -> PENDING_APPROVAL
+// server-side and swaps this whole screen out for the real dashboard in the
+// same tick. A sessionStorage flag survives that swap; component state
+// inside this soon-to-unmount tree wouldn't.
+export const TRAINING_JUST_COMPLETED_KEY = "eezit-partner-training-just-completed";
+
 /**
- * One lesson row — collapsed it's just a title + duration; expanding it
- * plays the video (if the lesson has one) or shows its text content, and
- * marks the lesson "viewed" (a local-only checkmark, not saved anywhere —
- * there's no per-lesson progress field in the API, only course-level
- * status/score, so this is just a memory aid for the partner working
- * through a course, not something the backend tracks).
+ * One lesson row. A lesson only counts as done once it's actually been
+ * watched through — a video lesson completes on the video's real `ended`
+ * event (not just opening it), text-only/empty lessons need an explicit
+ * "Mark as read" since there's nothing to auto-detect there.
  */
-function LessonRow({ lesson, viewed, onOpen }: { lesson: TrainingLesson; viewed: boolean; onOpen: () => void }) {
+function LessonRow({
+  lesson,
+  completed,
+  onComplete,
+}: {
+  lesson: TrainingLesson;
+  completed: boolean;
+  onComplete: () => void;
+}) {
   const [open, setOpen] = useState(false);
   const [videoFailed, setVideoFailed] = useState(false);
-
-  const toggle = () => {
-    if (!open) onOpen();
-    setOpen((prev) => !prev);
-  };
+  const hasVideo = Boolean(lesson.videoKey);
 
   return (
     <div className="rounded-xl border border-stone-100 bg-[#FAF9F6] overflow-hidden">
-      <button onClick={toggle} className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left cursor-pointer">
-        {viewed ? (
+      <button
+        onClick={() => setOpen((prev) => !prev)}
+        className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left cursor-pointer"
+      >
+        {completed ? (
           <CheckCircle2 className="h-3.5 w-3.5 text-green-600 shrink-0" />
         ) : (
           <PlayCircle className="h-3.5 w-3.5 text-stone-300 shrink-0" />
@@ -44,11 +58,12 @@ function LessonRow({ lesson, viewed, onOpen }: { lesson: TrainingLesson; viewed:
 
       {open && (
         <div className="px-3 pb-3 animate-expand origin-top">
-          {lesson.videoKey && !videoFailed ? (
+          {hasVideo && !videoFailed ? (
             <video
               controls
               className="w-full rounded-lg bg-black aspect-video"
-              src={lesson.videoKey}
+              src={lesson.videoKey ?? undefined}
+              onEnded={() => !completed && onComplete()}
               onError={() => setVideoFailed(true)}
             />
           ) : lesson.content ? (
@@ -57,6 +72,17 @@ function LessonRow({ lesson, viewed, onOpen }: { lesson: TrainingLesson; viewed:
             <p className="text-xs text-stone-400 italic">
               {videoFailed ? "This video couldn't be loaded." : "No content added for this lesson yet."}
             </p>
+          )}
+
+          {/* Nothing to auto-detect "watched" from (no video, or the video failed to load) —
+              an explicit action instead, so the lesson isn't permanently stuck unfinished. */}
+          {!completed && (!hasVideo || videoFailed) && (
+            <button
+              onClick={onComplete}
+              className="mt-2.5 w-full rounded-lg py-2 text-[11px] font-bold bg-white border border-stone-200 text-stone-700 hover:bg-stone-100 transition-all cursor-pointer"
+            >
+              Mark as {hasVideo ? "watched" : "read"}
+            </button>
           )}
         </div>
       )}
@@ -68,23 +94,23 @@ function CourseCard({
   progress,
   expanded,
   onToggleExpand,
-  viewedLessonIds,
-  onOpenLesson,
-  onComplete,
+  completedLessonIds,
+  onLessonComplete,
+  onManualComplete,
   completing,
 }: {
   progress: PartnerTrainingProgress;
   expanded: boolean;
   onToggleExpand: () => void;
-  viewedLessonIds: Set<string>;
-  onOpenLesson: (lessonId: string) => void;
-  onComplete: () => void;
+  completedLessonIds: Set<string>;
+  onLessonComplete: (lessonId: string) => void;
+  onManualComplete: () => void;
   completing: boolean;
 }) {
   const isDone = progress.status === "COMPLETED";
   const modules = progress.course.modules ?? [];
   const allLessons = modules.flatMap((m) => m.lessons ?? []);
-  const viewedCount = allLessons.filter((l) => viewedLessonIds.has(l.id)).length;
+  const completedCount = allLessons.filter((l) => completedLessonIds.has(l.id)).length;
 
   return (
     <div className="rounded-2xl border border-stone-100 bg-white shadow-sm overflow-hidden">
@@ -99,7 +125,7 @@ function CourseCard({
           <p className="text-[11px] text-stone-400 mt-0.5">
             {progress.course.estimatedMinutes} min
             {progress.course.isMandatory ? " · Mandatory" : " · Optional"}
-            {allLessons.length > 0 && ` · ${viewedCount}/${allLessons.length} lessons viewed`}
+            {allLessons.length > 0 && ` · ${completedCount}/${allLessons.length} lessons watched`}
           </p>
         </div>
         {expanded ? (
@@ -125,8 +151,8 @@ function CourseCard({
                       <LessonRow
                         key={lesson.id}
                         lesson={lesson}
-                        viewed={viewedLessonIds.has(lesson.id)}
-                        onOpen={() => onOpenLesson(lesson.id)}
+                        completed={completedLessonIds.has(lesson.id)}
+                        onComplete={() => onLessonComplete(lesson.id)}
                       />
                     ))}
                   </div>
@@ -135,9 +161,13 @@ function CourseCard({
             </div>
           )}
 
-          {!isDone && (
+          {/* Once every lesson is watched, the course completes itself — see
+              handleLessonComplete. This manual fallback only matters for a
+              course with no lessons at all, where there's nothing to
+              auto-trigger from. */}
+          {!isDone && allLessons.length === 0 && (
             <button
-              onClick={onComplete}
+              onClick={onManualComplete}
               disabled={completing}
               className="mt-4 w-full rounded-xl py-2.5 text-xs font-bold bg-stone-900 text-white hover:bg-stone-800 transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60"
             >
@@ -170,15 +200,25 @@ function CourseListSkeleton() {
  *    training material stays available to rewatch — same component, same
  *    course list, just with a back arrow and no "you must finish this"
  *    framing.
+ *
+ * Completion is layered: finishing a lesson (video watched through, or
+ * "mark as read" for one with no video) fires a small achievement toast and
+ * checks whether it just finished every lesson in its course — if so, the
+ * course itself is marked complete automatically (another toast). If that
+ * was also the last mandatory course, the big TrainingCompleteModal takes
+ * over on whichever screen renders next (see TRAINING_JUST_COMPLETED_KEY).
  */
 export default function TrainingCenter({ partner, onBack }: { partner: Partner; onBack?: () => void }) {
   const { refreshProfile } = useAuth();
   const [courses, setCourses] = useState<PartnerTrainingProgress[] | null>(null);
   const [expandedCourseId, setExpandedCourseId] = useState<string | null>(null);
-  const [viewedLessonIds, setViewedLessonIds] = useState<Set<string>>(new Set());
+  const [completedLessonIds, setCompletedLessonIds] = useState<Set<string>>(new Set());
   const [completingCourseId, setCompletingCourseId] = useState<string | null>(null);
   const [checkingStatus, setCheckingStatus] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { achievement, showAchievement } = useAchievementToast();
+
+  const isGate = !onBack;
 
   const load = async () => {
     try {
@@ -195,26 +235,47 @@ export default function TrainingCenter({ partner, onBack }: { partner: Partner; 
     load();
   }, []);
 
-  const handleOpenLesson = (lessonId: string) => {
-    setViewedLessonIds((prev) => new Set(prev).add(lessonId));
-  };
-
   const handleComplete = async (courseId: string) => {
     setCompletingCourseId(courseId);
     setError(null);
     try {
       await trainingApi.updateMyCourseStatus(courseId, "COMPLETED", 100);
-      await load();
-      // Completing the last mandatory course flips the partner's status to
-      // PENDING_APPROVAL server-side — refresh the session's partner record
-      // so the gate (TrainingGateScreen) hands off to the real dashboard
-      // without needing a manual reload.
+      const freshCourses = await trainingApi.getMyCourses();
+      setCourses(freshCourses);
+
+      const completedCourse = freshCourses.find((c) => c.courseId === courseId);
+      showAchievement("Course complete! 🎓", completedCourse?.course.title);
+
+      const mandatory = freshCourses.filter((c) => c.course.isMandatory);
+      const remaining = mandatory.filter((c) => c.status !== "COMPLETED").length;
+      if (isGate && remaining === 0) {
+        window.sessionStorage.setItem(TRAINING_JUST_COMPLETED_KEY, "true");
+      }
+
+      // Refresh either way — this is also what applies the TRAINING ->
+      // PENDING_APPROVAL flip the line above just flagged for.
       await refreshProfile();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not update your progress. Please try again.");
     } finally {
       setCompletingCourseId(null);
     }
+  };
+
+  const handleLessonComplete = (courseId: string, lessonId: string, lessonTitle: string) => {
+    if (completedLessonIds.has(lessonId)) return; // already counted — a re-watch shouldn't re-fire the toast
+
+    const nextCompleted = new Set(completedLessonIds);
+    nextCompleted.add(lessonId);
+    setCompletedLessonIds(nextCompleted);
+    showAchievement("Lesson complete!", lessonTitle);
+
+    const progress = courses?.find((c) => c.courseId === courseId);
+    if (!progress || progress.status === "COMPLETED") return;
+
+    const allLessons = (progress.course.modules ?? []).flatMap((m) => m.lessons ?? []);
+    const allWatched = allLessons.length > 0 && allLessons.every((l) => nextCompleted.has(l.id));
+    if (allWatched) handleComplete(courseId);
   };
 
   const handleCheckStatus = async () => {
@@ -229,7 +290,6 @@ export default function TrainingCenter({ partner, onBack }: { partner: Partner; 
     }
   };
 
-  const isGate = !onBack;
   const mandatory = (courses ?? []).filter((c) => c.course.isMandatory);
   const remaining = mandatory.filter((c) => c.status !== "COMPLETED").length;
   const mandatoryDone = mandatory.length > 0 && remaining === 0;
@@ -288,11 +348,23 @@ export default function TrainingCenter({ partner, onBack }: { partner: Partner; 
         {/* Still under final review — shown alongside the (now rewatchable) course list rather than hiding it */}
         {partner.status === "PENDING_APPROVAL" && (
           <div className="mb-6 rounded-2xl border border-stone-100 bg-[#FAF9F6] p-4">
-            <p className="text-sm font-bold text-stone-900">Pending final approval</p>
-            <p className="text-xs text-stone-500 mt-1 leading-relaxed">
-              Your training is complete. Our team is doing a final review before you go live — bookings,
-              availability and other tools unlock as soon as you&apos;re approved.
-            </p>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-bold text-stone-900">Pending final approval</p>
+                <p className="text-xs text-stone-500 mt-1 leading-relaxed">
+                  Your training is complete. Our team is doing a final review before you go live — bookings,
+                  availability and other tools unlock as soon as you&apos;re approved.
+                </p>
+              </div>
+              <button
+                onClick={handleCheckStatus}
+                disabled={checkingStatus}
+                className="shrink-0 flex items-center gap-1.5 rounded-full border border-stone-200 bg-white px-3 py-1.5 text-[11px] font-bold text-stone-600 hover:bg-stone-50 transition-colors cursor-pointer disabled:opacity-60"
+              >
+                {checkingStatus && <Loader2 className="h-3 w-3 animate-spin" />}
+                Check now
+              </button>
+            </div>
           </div>
         )}
 
@@ -309,9 +381,14 @@ export default function TrainingCenter({ partner, onBack }: { partner: Partner; 
                 progress={progress}
                 expanded={expandedCourseId === progress.courseId}
                 onToggleExpand={() => setExpandedCourseId((prev) => (prev === progress.courseId ? null : progress.courseId))}
-                viewedLessonIds={viewedLessonIds}
-                onOpenLesson={handleOpenLesson}
-                onComplete={() => handleComplete(progress.courseId)}
+                completedLessonIds={completedLessonIds}
+                onLessonComplete={(lessonId) => {
+                  const lesson = (progress.course.modules ?? [])
+                    .flatMap((m) => m.lessons ?? [])
+                    .find((l) => l.id === lessonId);
+                  handleLessonComplete(progress.courseId, lessonId, lesson?.title ?? progress.course.title);
+                }}
+                onManualComplete={() => handleComplete(progress.courseId)}
                 completing={completingCourseId === progress.courseId}
               />
             ))}
@@ -320,7 +397,7 @@ export default function TrainingCenter({ partner, onBack }: { partner: Partner; 
 
         {error && <p className="mt-3 text-xs font-medium text-red-500">{error}</p>}
 
-        {isGate && mandatoryDone && (
+        {isGate && mandatoryDone && partner.status === "TRAINING" && (
           <button
             onClick={handleCheckStatus}
             disabled={checkingStatus}
@@ -331,6 +408,8 @@ export default function TrainingCenter({ partner, onBack }: { partner: Partner; 
           </button>
         )}
       </div>
+
+      <AchievementToast achievement={achievement} />
     </div>
   );
 }
