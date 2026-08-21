@@ -42,7 +42,7 @@ export default function OnboardingShell({ children }: { children: React.ReactNod
         }}
         showCloseButton={false}
       >
-        <h2 className="sr-only">Vellora Partner Onboarding</h2>
+        <h2 className="sr-only">Eezit Partner Onboarding</h2>
         {children}
       </DialogContent>
     </Dialog>

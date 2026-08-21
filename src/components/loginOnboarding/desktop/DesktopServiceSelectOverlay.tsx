@@ -1,0 +1,92 @@
+"use client";
+
+import React from "react";
+import { Search, Check, X } from "lucide-react";
+import type { ServiceCategory } from "@/lib/api/types";
+
+interface DesktopServiceSelectOverlayProps {
+  categories: ServiceCategory[];
+  loading: boolean;
+  selectedIds: string[];
+  onToggle: (id: string) => void;
+  search: string;
+  setSearch: (value: string) => void;
+  onClose: () => void;
+}
+
+/** Same picker as the mobile ServiceSelectOverlay, just a centered modal
+ *  instead of a full-screen takeover — desktop has the room for that. */
+export default function DesktopServiceSelectOverlay({
+  categories,
+  loading,
+  selectedIds,
+  onToggle,
+  search,
+  setSearch,
+  onClose,
+}: DesktopServiceSelectOverlayProps) {
+  const filtered = categories.filter((c) => (c.title || c.name).toLowerCase().includes(search.toLowerCase()));
+
+  return (
+    <div className="fixed inset-0 z-100 bg-stone-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="w-full max-w-md max-h-[80vh] flex flex-col bg-white rounded-3xl shadow-2xl overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-stone-100 shrink-0">
+          <h2 className="text-sm font-bold text-stone-800">Select services you offer</h2>
+          <button onClick={onClose} className="p-1.5 hover:bg-stone-100 rounded-full transition-colors cursor-pointer">
+            <X className="h-4 w-4 text-stone-500" />
+          </button>
+        </div>
+
+        <div className="px-5 py-3 shrink-0">
+          <div className="flex items-center rounded-full border border-stone-200 bg-stone-50 px-3 py-2.5 focus-within:border-amber-500 focus-within:ring-1 focus-within:ring-amber-500/30 transition-all">
+            <Search className="h-4 w-4 text-stone-400 mr-2 shrink-0" />
+            <input
+              type="text"
+              placeholder="Search services"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full text-sm outline-none text-stone-800 bg-transparent"
+              autoFocus
+            />
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-5 pb-2">
+          {loading && <p className="text-sm text-stone-400 py-6 text-center">Loading services…</p>}
+          {!loading && filtered.length === 0 && <p className="text-sm text-stone-400 py-6 text-center">No services found.</p>}
+          {filtered.map((category) => {
+            const active = selectedIds.includes(category.id);
+            return (
+              <label
+                key={category.id}
+                className="flex items-center justify-between py-3 border-b border-stone-100 cursor-pointer hover:bg-stone-50 -mx-2 px-2 rounded-lg transition-colors"
+              >
+                <div className="min-w-0">
+                  <span className="text-sm text-stone-700 block truncate">{category.title || category.name}</span>
+                  {category.subtitle && <span className="text-[11px] text-stone-400">{category.subtitle}</span>}
+                </div>
+                <div
+                  className={`h-5 w-5 rounded-md border-2 flex items-center justify-center transition-colors shrink-0 ${
+                    active ? "border-[#C9851A] bg-[#C9851A]" : "border-stone-300"
+                  }`}
+                >
+                  {active && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
+                </div>
+                <input type="checkbox" checked={active} onChange={() => onToggle(category.id)} className="hidden" />
+              </label>
+            );
+          })}
+        </div>
+
+        <div className="px-5 pb-5 pt-3 border-t border-stone-100 shrink-0">
+          <button
+            onClick={onClose}
+            className="w-full rounded-xl py-3 font-bold text-sm bg-stone-900 text-white hover:bg-stone-800 shadow-lg cursor-pointer transition-all active:scale-[0.98]"
+          >
+            Done ({selectedIds.length} selected)
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

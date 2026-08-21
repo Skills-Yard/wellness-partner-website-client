@@ -4,8 +4,10 @@ import React, { useEffect, useState } from "react";
 import ServiceAreaStep, { type ResolvedArea } from "./ServiceAreaStep";
 import ServiceSelectOverlay from "./ServiceSelectOverlay";
 import OnboardingStep from "./OnboardingStep";
-import EarningsPreviewStep from "./EarningsPreviewStep";
-import EarningsDetailStep from "./EarningsDetailStep";
+import DesktopServiceAreaStep from "./desktop/DesktopServiceAreaStep";
+import DesktopPartnerDetailsStep from "./desktop/DesktopPartnerDetailsStep";
+import DesktopServiceSelectOverlay from "./desktop/DesktopServiceSelectOverlay";
+import { useIsDesktopViewport } from "@/lib/hooks/useIsDesktopViewport";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { ApiError } from "@/lib/api/client";
 import * as partnerApi from "@/lib/api/partner";
@@ -14,7 +16,7 @@ import * as catalogApi from "@/lib/api/catalog";
 import * as zonesApi from "@/lib/api/zones";
 import type { ServiceCategory, ServiceItem } from "@/lib/api/types";
 
-type Step = "SERVICE_AREA" | "PROFILE_SERVICES" | "EARNINGS_PREVIEW" | "EARNINGS_DETAIL";
+type Step = "SERVICE_AREA" | "PROFILE_SERVICES";
 
 /**
  * status === INCOMPLETE, onboardingStep < 2. Order matters here: the
@@ -22,8 +24,7 @@ type Step = "SERVICE_AREA" | "PROFILE_SERVICES" | "EARNINGS_PREVIEW" | "EARNINGS
  * offer?" is answered from a catalog scoped to that area (x-zone-id) —
  * ServiceItem availability is zone-specific (ZoneServiceItemConfig), so
  * fetching it without a resolved zone would show a global, often-irrelevant
- * catalog. Then a couple of non-skippable "why partner with us" marketing
- * screens before KYC.
+ * catalog.
  *
  * The service area itself is resolved from a coordinate (see
  * ServiceAreaStep) rather than picked off a list — GET /zones resolves the
@@ -37,6 +38,7 @@ type Step = "SERVICE_AREA" | "PROFILE_SERVICES" | "EARNINGS_PREVIEW" | "EARNINGS
  */
 export default function ProfileSetupFlow() {
   const { partner, refreshProfile, logout } = useAuth();
+  const isDesktop = useIsDesktopViewport();
 
   const [step, setStep] = useState<Step>("SERVICE_AREA");
 
@@ -51,7 +53,6 @@ export default function ProfileSetupFlow() {
   const [name, setName] = useState(partner?.name ?? "");
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [agreed, setAgreed] = useState(false);
-  const [workHours, setWorkHours] = useState(8);
 
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [items, setItems] = useState<ServiceItem[]>([]);
@@ -170,7 +171,11 @@ export default function ProfileSetupFlow() {
         longitude: resolvedArea.longitude,
       });
       await onboardingApi.setServices(serviceItemIds);
-      setStep("EARNINGS_PREVIEW");
+      // No more "check your earnings" screens between this and KYC —
+      // profile + services are saved above, so this just re-fetches the
+      // partner record (onboardingStep flips server-side) and the dashboard
+      // hands off to KycFlow next.
+      await refreshProfile();
     } catch (err) {
       setSubmitError(err instanceof ApiError ? err.message : "Could not save your details. Please try again.");
     } finally {
@@ -178,69 +183,101 @@ export default function ProfileSetupFlow() {
     }
   };
 
-  const earningMap: Record<number, string> = { 4: "₹27,450", 6: "₹37,200", 8: "₹47,199" };
-
   return (
-    <div className="relative flex-1 flex flex-col min-h-0 overflow-hidden">
-      {step === "SERVICE_AREA" && (
-        <ServiceAreaStep
-          latitude={latitude}
-          longitude={longitude}
-          setLatitude={setLatitude}
-          setLongitude={setLongitude}
-          resolving={resolving}
-          error={resolveError}
-          resolvedArea={resolvedArea}
-          onResolve={() => resolveArea(parseFloat(latitude), parseFloat(longitude))}
-          onContinue={() => setStep("PROFILE_SERVICES")}
-        />
-      )}
+    <div className={isDesktop ? "relative w-full" : "relative flex-1 flex flex-col min-h-0 overflow-hidden"}>
+      {step === "SERVICE_AREA" &&
+        (isDesktop ? (
+          <DesktopServiceAreaStep
+            latitude={latitude}
+            longitude={longitude}
+            setLatitude={setLatitude}
+            setLongitude={setLongitude}
+            resolving={resolving}
+            error={resolveError}
+            resolvedArea={resolvedArea}
+            onResolve={() => resolveArea(parseFloat(latitude), parseFloat(longitude))}
+            onContinue={() => setStep("PROFILE_SERVICES")}
+          />
+        ) : (
+          <ServiceAreaStep
+            latitude={latitude}
+            longitude={longitude}
+            setLatitude={setLatitude}
+            setLongitude={setLongitude}
+            resolving={resolving}
+            error={resolveError}
+            resolvedArea={resolvedArea}
+            onResolve={() => resolveArea(parseFloat(latitude), parseFloat(longitude))}
+            onContinue={() => setStep("PROFILE_SERVICES")}
+          />
+        ))}
 
-      {showServiceSelect && step === "PROFILE_SERVICES" && (
-        <ServiceSelectOverlay
-          categories={categories}
-          loading={catalogLoading}
-          selectedIds={selectedCategoryIds}
-          onToggle={toggleCategory}
-          search={serviceSearch}
-          setSearch={setServiceSearch}
-          onClose={() => setShowServiceSelect(false)}
-        />
-      )}
+      {showServiceSelect &&
+        step === "PROFILE_SERVICES" &&
+        (isDesktop ? (
+          <DesktopServiceSelectOverlay
+            categories={categories}
+            loading={catalogLoading}
+            selectedIds={selectedCategoryIds}
+            onToggle={toggleCategory}
+            search={serviceSearch}
+            setSearch={setServiceSearch}
+            onClose={() => setShowServiceSelect(false)}
+          />
+        ) : (
+          <ServiceSelectOverlay
+            categories={categories}
+            loading={catalogLoading}
+            selectedIds={selectedCategoryIds}
+            onToggle={toggleCategory}
+            search={serviceSearch}
+            setSearch={setServiceSearch}
+            onClose={() => setShowServiceSelect(false)}
+          />
+        ))}
 
-      {step === "PROFILE_SERVICES" && (
-        <OnboardingStep
-          name={name}
-          setName={setName}
-          selectedCategoryIds={selectedCategoryIds}
-          categories={categories}
-          categoriesLoading={catalogLoading}
-          city={resolvedArea?.city ?? ""}
-          agreed={agreed}
-          setAgreed={setAgreed}
-          hasSpecialChar={hasSpecialChar}
-          isFormValid={isFormValid}
-          onBack={() => setStep("SERVICE_AREA")}
-          onOpenServiceSelect={() => setShowServiceSelect(true)}
-          onComplete={handleComplete}
-          loading={submitLoading}
-          error={submitError}
-        />
-      )}
+      {step === "PROFILE_SERVICES" &&
+        (isDesktop ? (
+          <DesktopPartnerDetailsStep
+            name={name}
+            setName={setName}
+            selectedCategoryIds={selectedCategoryIds}
+            categories={categories}
+            categoriesLoading={catalogLoading}
+            city={resolvedArea?.city ?? ""}
+            agreed={agreed}
+            setAgreed={setAgreed}
+            hasSpecialChar={hasSpecialChar}
+            isFormValid={isFormValid}
+            onBack={() => setStep("SERVICE_AREA")}
+            onOpenServiceSelect={() => setShowServiceSelect(true)}
+            onToggleCategory={toggleCategory}
+            onComplete={handleComplete}
+            loading={submitLoading}
+            error={submitError}
+          />
+        ) : (
+          <OnboardingStep
+            name={name}
+            setName={setName}
+            selectedCategoryIds={selectedCategoryIds}
+            categories={categories}
+            categoriesLoading={catalogLoading}
+            city={resolvedArea?.city ?? ""}
+            agreed={agreed}
+            setAgreed={setAgreed}
+            hasSpecialChar={hasSpecialChar}
+            isFormValid={isFormValid}
+            onBack={() => setStep("SERVICE_AREA")}
+            onOpenServiceSelect={() => setShowServiceSelect(true)}
+            onComplete={handleComplete}
+            loading={submitLoading}
+            error={submitError}
+          />
+        ))}
 
-      {step === "EARNINGS_PREVIEW" && <EarningsPreviewStep onNext={() => setStep("EARNINGS_DETAIL")} />}
-
-      {step === "EARNINGS_DETAIL" && (
-        <EarningsDetailStep
-          workHours={workHours}
-          setWorkHours={setWorkHours}
-          earningMap={earningMap}
-          onBack={() => setStep("EARNINGS_PREVIEW")}
-          onFinalComplete={() => refreshProfile()}
-        />
-      )}
-
-      {step === "SERVICE_AREA" && (
+      {/* Desktop already has its own sign-out link in the wizard sidebar — this is mobile-only */}
+      {!isDesktop && step === "SERVICE_AREA" && (
         <button
           onClick={() => logout()}
           className="absolute top-5 right-5 text-[11px] font-semibold text-stone-400 hover:text-stone-600 z-30"

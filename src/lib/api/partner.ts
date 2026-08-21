@@ -44,6 +44,18 @@ export function updateProfile(data: Partial<{
   });
 }
 
+// Dedicated coordinate-only update — distinct from updateProfile's general
+// PATCH (which also accepts latitude/longitude among everything else).
+// This one's for the "Location Settings" tab's coordinate editor
+// specifically; the backend presumably re-validates zone coverage against
+// the new point the same way registration's zone resolution does.
+export function updateLocation(data: { latitude: number; longitude: number }) {
+  return request<Partner>("/partner/profile/location", {
+    method: "PATCH",
+    body: data,
+  });
+}
+
 export function getBankAccount() {
   return request<BankAccount>("/partner/profile/bank-account");
 }

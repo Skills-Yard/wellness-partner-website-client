@@ -3,11 +3,13 @@
 import React, { useEffect, useState } from "react";
 import { ChevronRight, CalendarClock, Briefcase, GraduationCap, Users, Star, TrendingUp, Lock, Landmark, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { useIsDesktopViewport } from "@/lib/hooks/useIsDesktopViewport";
 import BottomNav from "./BottomNav";
 import Sidebar from "./Sidebar";
 import PartnerStatusHeader from "./PartnerStatusHeader";
 import TodayActivity from "./TodayActivity";
 import ProfilePage from "./ProfilePage";
+import DesktopProfilePage from "./DesktopProfilePage";
 import MoneyPage from "./MoneyPage";
 import TrainingCenter, { TRAINING_JUST_COMPLETED_KEY } from "./TrainingCenter";
 import TrainingCompleteModal from "./TrainingCompleteModal";
@@ -75,6 +77,7 @@ function ManageCard({
 
 export default function PartnerHomescreen({ partner, onLogout }: PartnerHomescreenProps) {
   const { refreshProfile } = useAuth();
+  const isDesktop = useIsDesktopViewport();
   const [activeTab, setActiveTab] = useState<"home" | "money" | "profile">("home");
   const [subView, setSubView] = useState<SubView>(null);
   const [showTrainingCelebration, setShowTrainingCelebration] = useState(false);
@@ -137,7 +140,16 @@ export default function PartnerHomescreen({ partner, onLogout }: PartnerHomescre
   } else if (subView === "training") {
     content = <TrainingCenter partner={partner} onBack={() => setSubView(null)} />;
   } else if (activeTab === "profile") {
-    content = <ProfilePage partner={partner} onLogout={onLogout} onBack={() => goToTab("home")} onOpenBankAccount={() => openSubView("bank")} />;
+    // Desktop gets the full tabbed profile (personal info/banking/location,
+    // completion tracker) — mobile keeps this exact ProfilePage untouched.
+    // isDesktop is briefly null before the viewport check resolves; render
+    // nothing rather than guess and flash the wrong one.
+    content =
+      isDesktop === null ? null : isDesktop ? (
+        <DesktopProfilePage onManageAvailability={() => openSubView("availability")} />
+      ) : (
+        <ProfilePage partner={partner} onLogout={onLogout} onBack={() => goToTab("home")} onOpenBankAccount={() => openSubView("bank")} />
+      );
   } else if (activeTab === "money") {
     content = <MoneyPage />;
   } else {

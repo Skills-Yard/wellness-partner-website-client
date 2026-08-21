@@ -4,10 +4,14 @@ import React from "react";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import OnboardingShell from "./loginOnboarding/OnboardingShell";
+import OnboardingWizardShell from "./loginOnboarding/OnboardingWizardShell";
+import { OnboardingWizardProvider } from "./loginOnboarding/OnboardingWizardContext";
+import { useIsDesktopViewport } from "@/lib/hooks/useIsDesktopViewport";
 import LoginForm from "./loginOnboarding/loginForm";
 import ProfileSetupFlow from "./loginOnboarding/ProfileSetupFlow";
 import KycFlow from "../components/kyc/KycFlow";
-import WaitingScreen from "../components/status/WaitingScreen";
+import DocumentsUnderReviewScreen from "../components/status/DocumentsUnderReviewScreen";
+import DesktopDocumentsUnderReview from "./loginOnboarding/desktop/DesktopDocumentsUnderReview";
 import BlockedScreen from "../components/status/BlockedScreen";
 import PartnerHomescreen from "./home/PartnerHomescreen";
 import TrainingGateScreen from "./home/TrainingGateScreen";
@@ -30,39 +34,65 @@ function FullScreenSpinner() {
  */
 export default function DashboardContent() {
   const { status, partner, logout } = useAuth();
+  const isDesktop = useIsDesktopViewport();
 
-  if (status === "loading") return <FullScreenSpinner />;
+  if (status === "loading" || isDesktop === null) return <FullScreenSpinner />;
+
+  // Login/register -> work & location -> partner details -> verify identity
+  // is the one stretch of the flow that gets the desktop wizard treatment
+  // (persistent step sidebar) — see OnboardingWizardShell for why. Wrapped
+  // in one shared OnboardingWizardProvider so its "which step is active"
+  // state survives the LoginForm -> ProfileSetupFlow -> KycFlow handoffs
+  // (each is a genuinely different component, swapped in by the status
+  // below, not sub-steps of one component) instead of resetting between
+  // them. Everything else (waiting/blocked screens, the real dashboard,
+  // the training gate) keeps its existing full-screen treatment untouched
+  // — the reference redesign this is based on only covered the active
+  // registration/KYC steps.
+  const WizardShell = isDesktop ? OnboardingWizardShell : OnboardingShell;
 
   if (status === "unauthenticated" || !partner) {
     return (
-      <OnboardingShell>
-        <LoginForm />
-      </OnboardingShell>
+      <OnboardingWizardProvider>
+        <WizardShell>
+          <LoginForm />
+        </WizardShell>
+      </OnboardingWizardProvider>
     );
   }
 
   switch (partner.status) {
     case "INCOMPLETE":
       return (
-        <OnboardingShell>
-          {(partner.onboardingStep ?? 1) < 2 ? <ProfileSetupFlow /> : <KycFlow />}
-        </OnboardingShell>
+        <OnboardingWizardProvider>
+          <WizardShell>{(partner.onboardingStep ?? 1) < 2 ? <ProfileSetupFlow /> : <KycFlow />}</WizardShell>
+        </OnboardingWizardProvider>
       );
 
     case "PENDING_KYC":
       return (
-        <OnboardingShell>
-          <KycFlow />
-        </OnboardingShell>
+        <OnboardingWizardProvider>
+          <WizardShell>
+            <KycFlow />
+          </WizardShell>
+        </OnboardingWizardProvider>
       );
 
+    // Desktop reuses the same wizard sidebar as the rest of the flow (with
+    // the top bar enabled, and "Verify Identity" showing an "Under review"
+    // badge instead of moving on to "Review & Submit" — see
+    // DesktopDocumentsUnderReview). Mobile keeps its own dedicated
+    // full-screen version exactly as it already was.
     case "KYC_SUBMITTED":
-      return (
+      return isDesktop ? (
+        <OnboardingWizardProvider>
+          <OnboardingWizardShell topBar>
+            <DesktopDocumentsUnderReview />
+          </OnboardingWizardShell>
+        </OnboardingWizardProvider>
+      ) : (
         <OnboardingShell>
-          <WaitingScreen
-            title="Documents under review"
-            description="We're verifying your documents. This usually takes 1-2 business days — check back soon."
-          />
+          <DocumentsUnderReviewScreen />
         </OnboardingShell>
       );
 

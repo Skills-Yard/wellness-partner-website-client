@@ -5,6 +5,10 @@ import { MessageSquare } from "lucide-react";
 import PhoneStep from "./PhoneStep";
 import OtpStep from "./OtpStep";
 import PartnerTypeStep from "./PartnerTypeStep";
+import DesktopPhoneStep from "./desktop/DesktopPhoneStep";
+import DesktopOtpStep from "./desktop/DesktopOtpStep";
+import DesktopPartnerTypeStep from "./desktop/DesktopPartnerTypeStep";
+import { useIsDesktopViewport } from "@/lib/hooks/useIsDesktopViewport";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { ApiError } from "@/lib/api/client";
 import * as authApi from "@/lib/api/auth";
@@ -23,6 +27,7 @@ const RESEND_SECONDS = 30;
  */
 export default function LoginForm() {
   const { login } = useAuth();
+  const isDesktop = useIsDesktopViewport();
 
   const [step, setStep] = useState<AuthStep>("PHONE");
   const [phone, setPhone] = useState("");
@@ -155,44 +160,68 @@ export default function LoginForm() {
   };
 
   return (
-    <div className="relative flex-1 flex flex-col overflow-hidden">
-      {step === "PHONE" && (
-        <PhoneStep
-          phone={phone}
-          setPhone={setPhone}
-          onPhoneSubmit={handlePhoneSubmit}
-          loading={phoneLoading}
-          error={phoneError}
-        />
-      )}
+    <div className={isDesktop ? "relative w-full" : "relative flex-1 flex flex-col overflow-hidden"}>
+      {step === "PHONE" &&
+        (isDesktop ? (
+          <DesktopPhoneStep phone={phone} setPhone={setPhone} onPhoneSubmit={handlePhoneSubmit} loading={phoneLoading} error={phoneError} />
+        ) : (
+          <PhoneStep phone={phone} setPhone={setPhone} onPhoneSubmit={handlePhoneSubmit} loading={phoneLoading} error={phoneError} />
+        ))}
 
-      {step === "OTP" && (
-        <OtpStep
-          phone={phone}
-          otp={otp}
-          timer={timer}
-          timerExpired={timerExpired}
-          otpRefs={otpRefs}
-          handleOtpChange={handleOtpChange}
-          handleOtpKeyDown={handleOtpKeyDown}
-          onBack={() => setStep("PHONE")}
-          onResend={handleResend}
-          loading={otpLoading}
-          error={otpError}
-          devOtp={devOtp}
-        />
-      )}
+      {step === "OTP" &&
+        (isDesktop ? (
+          <DesktopOtpStep
+            phone={phone}
+            otp={otp}
+            timer={timer}
+            timerExpired={timerExpired}
+            otpRefs={otpRefs}
+            handleOtpChange={handleOtpChange}
+            handleOtpKeyDown={handleOtpKeyDown}
+            onBack={() => setStep("PHONE")}
+            onResend={handleResend}
+            onSubmit={() => submitOtp(otp.join(""))}
+            loading={otpLoading}
+            error={otpError}
+            devOtp={devOtp}
+          />
+        ) : (
+          <OtpStep
+            phone={phone}
+            otp={otp}
+            timer={timer}
+            timerExpired={timerExpired}
+            otpRefs={otpRefs}
+            handleOtpChange={handleOtpChange}
+            handleOtpKeyDown={handleOtpKeyDown}
+            onBack={() => setStep("PHONE")}
+            onResend={handleResend}
+            loading={otpLoading}
+            error={otpError}
+            devOtp={devOtp}
+          />
+        ))}
 
-      {step === "PARTNER_TYPE" && (
-        <PartnerTypeStep
-          value={partnerType}
-          onChange={setPartnerType}
-          onBack={() => setStep("OTP")}
-          onContinue={handleRegister}
-          loading={typeLoading}
-          error={typeError}
-        />
-      )}
+      {step === "PARTNER_TYPE" &&
+        (isDesktop ? (
+          <DesktopPartnerTypeStep
+            value={partnerType}
+            onChange={setPartnerType}
+            onBack={() => setStep("OTP")}
+            onContinue={handleRegister}
+            loading={typeLoading}
+            error={typeError}
+          />
+        ) : (
+          <PartnerTypeStep
+            value={partnerType}
+            onChange={setPartnerType}
+            onBack={() => setStep("OTP")}
+            onContinue={handleRegister}
+            loading={typeLoading}
+            error={typeError}
+          />
+        ))}
 
       {/* Floating Notification */}
       <div
