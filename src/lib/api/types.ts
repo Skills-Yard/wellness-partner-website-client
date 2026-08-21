@@ -281,6 +281,12 @@ export interface Booking {
   estimatedEndTime: string;
   estimatedDurationMinutes: number;
   clientNotes?: string | null;
+  // Money fields (totalAmount/partnerEarning, and BookingItem.price below)
+  // are plain rupee integers, NOT paise — despite the "minor units" comment
+  // on the backend's Payment model, nothing in BookingService ever
+  // multiplies/divides by 100 (confirmed against wellness-website-client's
+  // src/types/booking.ts, which documents the same convention). Do not
+  // divide these by 100 when displaying them.
   totalAmount: number;
   partnerEarning: number;
   items?: Array<{

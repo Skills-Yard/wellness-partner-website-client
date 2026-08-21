@@ -5,6 +5,9 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import * as bookingsApi from "@/lib/api/bookings";
 import { ApiError } from "@/lib/api/client";
 import type { Booking, BookingStatus } from "@/lib/api/types";
+import StartServiceModal from "@/components/booking/StartServiceModal";
+import CancelBookingModal from "@/components/booking/CancelBookingModal";
+import DisputeBookingModal from "@/components/booking/DisputeBookingModal";
 
 const STATUS_COLORS: Partial<Record<BookingStatus, string>> = {
   BROADCASTED: "bg-amber-50 text-amber-700",
@@ -18,6 +21,13 @@ const STATUS_COLORS: Partial<Record<BookingStatus, string>> = {
   CANCELLED_BY_ADMIN: "bg-stone-100 text-stone-500",
   DISPUTED: "bg-red-50 text-red-700",
 };
+
+// Mirrors the backend's own gating (PaymentService.NON_CANCELLABLE_STATUSES /
+// DISPUTABLE_STATUSES) so the button only ever shows when the call it fires
+// would actually succeed — assigned-but-not-started for cancel, and
+// happening-or-happened for a dispute.
+const CANCELLABLE_STATUSES: BookingStatus[] = ["ACCEPTED", "CONFIRMED", "PARTNER_EN_ROUTE", "PARTNER_ARRIVED"];
+const DISPUTABLE_STATUSES: BookingStatus[] = ["IN_PROGRESS", "COMPLETED"];
 
 // scheduledDate is a real DateTime column on the backend, so it comes back
 // as a full ISO instant (e.g. "2026-08-21T00:00:00.000Z") rather than a
@@ -54,6 +64,11 @@ function BookingCard({ booking, onAction }: { booking: Booking; onAction: () => 
   } else if (booking.status === "IN_PROGRESS") {
     actions.push({ key: "complete", label: "Mark complete", run: () => bookingsApi.completeBooking(booking.id) });
   }
+  // PARTNER_ARRIVED isn't a one-tap action — it needs the client's arrival
+  // code, so it's rendered separately below via StartServiceModal.
+
+  const showCancel = CANCELLABLE_STATUSES.includes(booking.status);
+  const showDispute = DISPUTABLE_STATUSES.includes(booking.status);
 
   return (
     <div className="rounded-2xl border border-stone-100 bg-[#FAF9F6] p-4">
@@ -73,9 +88,9 @@ function BookingCard({ booking, onAction }: { booking: Booking; onAction: () => 
         {formatScheduledDate(booking.scheduledDate)} · {booking.scheduledTime}
       </p>
       <p className="text-[11px] text-stone-400 mt-0.5">
-        You earn ₹{(booking.partnerEarning / 100).toFixed(0)}
+        You earn ₹{booking.partnerEarning.toFixed(0)}
       </p>
-      {actions.length > 0 && (
+      {(actions.length > 0 || booking.status === "PARTNER_ARRIVED") && (
         <div className="flex gap-2 mt-3">
           {actions.map((a) => (
             <button
@@ -88,6 +103,55 @@ function BookingCard({ booking, onAction }: { booking: Booking; onAction: () => 
               {a.label}
             </button>
           ))}
+          {booking.status === "PARTNER_ARRIVED" && (
+            <StartServiceModal
+              bookingId={booking.id}
+              onStarted={onAction}
+              trigger={(open) => (
+                <button
+                  onClick={open}
+                  disabled={busy !== null}
+                  className="flex-1 rounded-xl py-2 text-xs font-bold bg-stone-900 text-white hover:bg-stone-800 transition-all active:scale-[0.98] cursor-pointer disabled:opacity-60"
+                >
+                  Enter code to start
+                </button>
+              )}
+            />
+          )}
+        </div>
+      )}
+      {(showCancel || showDispute) && (
+        <div className="flex gap-2 mt-2">
+          {showCancel && (
+            <CancelBookingModal
+              bookingId={booking.id}
+              onCancelled={onAction}
+              trigger={(open) => (
+                <button
+                  onClick={open}
+                  disabled={busy !== null}
+                  className="flex-1 rounded-xl py-2 text-xs font-bold border border-stone-200 text-stone-500 hover:bg-stone-100 transition-all cursor-pointer disabled:opacity-60"
+                >
+                  Cancel booking
+                </button>
+              )}
+            />
+          )}
+          {showDispute && (
+            <DisputeBookingModal
+              bookingId={booking.id}
+              onDisputed={onAction}
+              trigger={(open) => (
+                <button
+                  onClick={open}
+                  disabled={busy !== null}
+                  className="flex-1 rounded-xl py-2 text-xs font-bold border border-stone-200 text-stone-500 hover:bg-stone-100 transition-all cursor-pointer disabled:opacity-60"
+                >
+                  Report an issue
+                </button>
+              )}
+            />
+          )}
         </div>
       )}
     </div>

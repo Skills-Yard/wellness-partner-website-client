@@ -100,7 +100,7 @@ function OfferPrompt({
 
   const booking = broadcast.booking;
   const serviceNames = booking.items.map((item) => item.serviceItemName).join(", ") || "Service booking";
-  const earning = (booking.partnerEarning / 100).toFixed(0);
+  const earning = booking.partnerEarning.toFixed(0);
   const address = [booking.address.city, booking.address.pincode].filter(Boolean).join(" · ");
 
   if (step === "reason") {
