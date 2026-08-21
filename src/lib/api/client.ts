@@ -85,7 +85,13 @@ async function silentRefresh(): Promise<boolean> {
   return refreshPromise;
 }
 
-export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+// Returns the full response envelope (data + pagination), not just `.data` —
+// list endpoints that need `pagination.totalPages` (see fetchAllPaginated
+// below) go through this instead of request(), which only returns `.data`.
+export async function requestEnvelope<T>(
+  path: string,
+  options: RequestOptions = {}
+): Promise<ApiSuccessEnvelope<T>> {
   const { method = "GET", body, headers = {}, auth = true, bearerOverride, _isRetry } = options;
 
   const finalHeaders: Record<string, string> = {
@@ -125,7 +131,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   if (res.status === 401 && auth && !bearerOverride && !_isRetry) {
     const refreshed = await silentRefresh();
     if (refreshed) {
-      return request<T>(path, { ...options, _isRetry: true });
+      return requestEnvelope<T>(path, { ...options, _isRetry: true });
     }
   }
 
@@ -146,6 +152,38 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     );
   }
 
-  if (json === null) return undefined as T;
-  return (json as ApiSuccessEnvelope<T>).data;
+  if (json === null) {
+    return {
+      success: true,
+      data: undefined as T,
+      meta: { timestamp: new Date().toISOString(), correlationId: "", path },
+    };
+  }
+  return json as ApiSuccessEnvelope<T>;
+}
+
+export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const envelope = await requestEnvelope<T>(path, options);
+  return envelope.data;
+}
+
+// The backend now paginates every list endpoint (default 20/page, 100 max)
+// instead of returning everything in one call. These screens still expect a
+// complete array (e.g. BookingsPanel/TodayActivity filter bookings
+// client-side), so this walks every backend page and concatenates —
+// preserves the "give me everything" contract they were built against,
+// correct as a resource grows past one page.
+export async function fetchAllPaginated<T>(
+  buildPath: (page: number, limit: number) => string,
+  options: RequestOptions = {},
+  limit = 100
+): Promise<T[]> {
+  const first = await requestEnvelope<T[]>(buildPath(1, limit), options);
+  const items = [...(first.data ?? [])];
+  const totalPages = first.pagination?.totalPages ?? 1;
+  for (let page = 2; page <= totalPages; page++) {
+    const next = await requestEnvelope<T[]>(buildPath(page, limit), options);
+    items.push(...(next.data ?? []));
+  }
+  return items;
 }

@@ -1,8 +1,8 @@
-import { request } from "./client";
+import { request, fetchAllPaginated } from "./client";
 import type { Booking, IncomingBroadcast } from "./types";
 
 export function getBookings() {
-  return request<Booking[]>("/partner/bookings");
+  return fetchAllPaginated<Booking>((page, limit) => `/partner/bookings?page=${page}&limit=${limit}`);
 }
 
 export function getIncomingBroadcasts() {

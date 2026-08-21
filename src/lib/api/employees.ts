@@ -1,8 +1,8 @@
-import { request } from "./client";
+import { request, fetchAllPaginated } from "./client";
 import type { PartnerEmployee } from "./types";
 
 export function getEmployees() {
-  return request<PartnerEmployee[]>("/partner/employees");
+  return fetchAllPaginated<PartnerEmployee>((page, limit) => `/partner/employees?page=${page}&limit=${limit}`);
 }
 
 export function createEmployee(data: {
