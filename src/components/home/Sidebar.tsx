@@ -14,10 +14,21 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  Bell,
 } from "lucide-react";
 import type { Partner } from "@/lib/api/types";
+import { useUnreadNotificationCount } from "@/hooks/queries/useNotifications";
 
-export type SidebarView = "home" | "bookings" | "availability" | "team" | "bank" | "training" | "money" | "profile";
+export type SidebarView =
+  | "home"
+  | "bookings"
+  | "availability"
+  | "team"
+  | "bank"
+  | "training"
+  | "notifications"
+  | "money"
+  | "profile";
 
 interface SidebarProps {
   partner: Partner;
@@ -28,7 +39,7 @@ interface SidebarProps {
   // until training is done rather than merely locked-looking.
   trainingOnly?: boolean;
   onNavigateTab: (tab: "home" | "money" | "profile") => void;
-  onOpenSubView: (view: "bookings" | "availability" | "team" | "bank" | "training") => void;
+  onOpenSubView: (view: "bookings" | "availability" | "team" | "bank" | "training" | "notifications") => void;
   onLogout: () => void;
 }
 
@@ -37,6 +48,7 @@ interface NavItem {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   locked?: boolean;
+  badge?: number;
   go: () => void;
 }
 
@@ -63,6 +75,7 @@ export default function Sidebar({
   onLogout,
 }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const { data: unreadCount = 0 } = useUnreadNotificationCount();
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- reading a one-time persisted preference on mount, not a render-loop hazard
@@ -100,6 +113,9 @@ export default function Sidebar({
         // (PENDING_APPROVAL/APPROVED), mandatory training is already done,
         // so this is purely for rewatching.
         { key: "training", label: "Training", icon: GraduationCap, go: () => onOpenSubView("training") },
+        // Never locked — KYC/training/approval updates all arrive as pushes
+        // before a partner is APPROVED, so this has to stay reachable throughout.
+        { key: "notifications", label: "Notifications", icon: Bell, badge: unreadCount, go: () => onOpenSubView("notifications") },
         { key: "money", label: "Money", icon: IndianRupee, go: () => onNavigateTab("money") },
         { key: "profile", label: "Profile", icon: User, go: () => onNavigateTab("profile") },
       ];
@@ -169,7 +185,14 @@ export default function Sidebar({
                   : "text-stone-500 hover:bg-stone-50 hover:text-stone-800"
               }`}
             >
-              <Icon className="w-4.5 h-4.5 shrink-0" />
+              <span className="relative shrink-0">
+                <Icon className="w-4.5 h-4.5" />
+                {!!item.badge && (
+                  <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#C9851A] text-[8px] font-bold text-white">
+                    {item.badge > 9 ? "9+" : item.badge}
+                  </span>
+                )}
+              </span>
               {!collapsed && <span className="flex-1 text-left truncate">{item.label}</span>}
               {!collapsed && item.locked && <Lock className="w-3.5 h-3.5 shrink-0" />}
             </button>

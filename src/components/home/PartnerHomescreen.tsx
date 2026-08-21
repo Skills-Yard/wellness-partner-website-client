@@ -13,6 +13,7 @@ import BookingsPanel from "./panels/BookingsPanel";
 import AvailabilityPanel from "./panels/AvailabilityPanel";
 import TeamPanel from "./panels/TeamPanel";
 import BankAccountPanel from "./panels/BankAccountPanel";
+import NotificationsPanel from "../notifications/NotificationsPanel";
 import type { Partner } from "@/lib/api/types";
 
 interface PartnerHomescreenProps {
@@ -20,7 +21,7 @@ interface PartnerHomescreenProps {
   onLogout: () => void;
 }
 
-type SubView = "bookings" | "availability" | "team" | "bank" | "training" | null;
+type SubView = "bookings" | "availability" | "team" | "bank" | "training" | "notifications" | null;
 
 function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string | number }) {
   return (
@@ -86,7 +87,9 @@ export default function PartnerHomescreen({ partner, onLogout }: PartnerHomescre
   // already done by the time this component renders at all, so rewatching
   // it is never gated.
   const openSubView = (view: Exclude<SubView, null>) => {
-    if (view !== "training" && !isApproved) return;
+    // Notifications matter before approval too (KYC/training/approval
+    // updates all arrive as pushes), so — like training — it's never gated.
+    if (view !== "training" && view !== "notifications" && !isApproved) return;
     setSubView(view);
   };
 
@@ -107,6 +110,13 @@ export default function PartnerHomescreen({ partner, onLogout }: PartnerHomescre
     content = <BankAccountPanel onBack={() => setSubView(null)} />;
   } else if (subView === "training") {
     content = <TrainingCenter partner={partner} onBack={() => setSubView(null)} />;
+  } else if (subView === "notifications") {
+    content = (
+      <NotificationsPanel
+        onBack={() => setSubView(null)}
+        onOpenBooking={() => openSubView("bookings")}
+      />
+    );
   } else if (activeTab === "profile") {
     content = <ProfilePage partner={partner} onLogout={onLogout} onBack={() => goToTab("home")} onOpenBankAccount={() => openSubView("bank")} />;
   } else if (activeTab === "money") {
@@ -114,7 +124,7 @@ export default function PartnerHomescreen({ partner, onLogout }: PartnerHomescre
   } else {
     content = (
       <div className="flex flex-col pb-28 lg:pb-10">
-        <PartnerStatusHeader partner={partner} />
+        <PartnerStatusHeader partner={partner} onOpenNotifications={() => openSubView("notifications")} />
 
         <div className="flex-1 w-full max-w-4xl mx-auto px-4 sm:px-8 py-6 flex flex-col gap-6">
           <p className="text-sm text-stone-500 -mt-2">

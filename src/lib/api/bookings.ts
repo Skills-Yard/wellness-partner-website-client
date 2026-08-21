@@ -1,12 +1,12 @@
 import { request } from "./client";
-import type { Booking } from "./types";
+import type { Booking, IncomingBroadcast } from "./types";
 
 export function getBookings() {
   return request<Booking[]>("/partner/bookings");
 }
 
 export function getIncomingBroadcasts() {
-  return request<unknown[]>("/partner/bookings/incoming");
+  return request<IncomingBroadcast[]>("/partner/bookings/incoming");
 }
 
 export function getBooking(bookingId: string) {
