@@ -1,6 +1,6 @@
 'use client';
 
-import React from "react";
+import React, { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import OnboardingShell from "./loginOnboarding/OnboardingShell";
@@ -37,6 +37,11 @@ function FullScreenSpinner() {
 export default function DashboardContent() {
   const { status, partner, logout } = useAuth();
   const isDesktop = useIsDesktopViewport();
+  // Bridges IncomingBookingModal's accept action over to PartnerHomescreen's
+  // tracking subview — the two are siblings below, not parent/child, so
+  // this is the shared ancestor state that hands the booking id across. See
+  // the prop comments on each for the full story.
+  const [pendingTrackingBookingId, setPendingTrackingBookingId] = useState<string | null>(null);
 
   if (status === "loading" || isDesktop === null) return <FullScreenSpinner />;
 
@@ -109,7 +114,14 @@ export default function DashboardContent() {
     // shape entirely.
     case "PENDING_APPROVAL":
     case "APPROVED":
-      screen = <PartnerHomescreen partner={partner} onLogout={() => logout()} />;
+      screen = (
+        <PartnerHomescreen
+          partner={partner}
+          onLogout={() => logout()}
+          pendingTrackingBookingId={pendingTrackingBookingId}
+          onPendingBookingConsumed={() => setPendingTrackingBookingId(null)}
+        />
+      );
       break;
 
     case "SUSPENDED":
@@ -135,7 +147,7 @@ export default function DashboardContent() {
           IncomingBookingModal's own polling is separately gated to APPROVED
           only, since on-demand broadcasts are never sent to anyone else. */}
       <PushNotificationBootstrap enabled />
-      <IncomingBookingModal enabled={partner.status === "APPROVED"} />
+      <IncomingBookingModal enabled={partner.status === "APPROVED"} onAccepted={setPendingTrackingBookingId} />
     </>
   );
 }

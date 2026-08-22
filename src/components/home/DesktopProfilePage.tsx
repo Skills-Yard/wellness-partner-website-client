@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { Globe, Landmark, MapPin, MessageCircle, Pencil, User as UserIcon } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import * as partnerApi from "@/lib/api/partner";
+import PartnerAvatar from "./PartnerAvatar";
 import PersonalInfoTab from "./profile/PersonalInfoTab";
 import BankingDetailsTab from "./profile/BankingDetailsTab";
 import LocationSettingsTab from "./profile/LocationSettingsTab";
@@ -111,8 +112,6 @@ export default function DesktopProfilePage({ onManageAvailability }: { onManageA
 
   if (!partner) return null;
 
-  const initials = (partner.name ?? "?").trim().charAt(0).toUpperCase() || "?";
-
   // Real completion, from actual partner/bank-account data — no fabricated
   // percentage. Service & Availability trivially reads "done" once these
   // fields carry a value, which they always do (serviceRadiusKm etc. all
@@ -138,9 +137,11 @@ export default function DesktopProfilePage({ onManageAvailability }: { onManageA
     <div className="w-full max-w-6xl mx-auto px-6 sm:px-8 py-8 flex flex-col gap-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-start gap-5">
-        <div className="w-20 h-20 rounded-full bg-stone-100 border border-stone-100 shadow-sm flex items-center justify-center text-2xl font-extrabold text-stone-400 shrink-0 overflow-hidden">
-          {photoPreviewUrl ? <img src={photoPreviewUrl} alt="" className="w-full h-full object-cover" /> : initials}
-        </div>
+        <PartnerAvatar
+          partner={partner}
+          photoUrl={photoPreviewUrl}
+          className="w-20 h-20 bg-stone-100 border border-stone-100 shadow-sm text-2xl text-stone-400 shrink-0"
+        />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2.5">
             <h1 className="text-xl font-extrabold text-stone-900">{partner.name ?? "Partner"}</h1>

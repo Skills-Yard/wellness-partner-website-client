@@ -152,7 +152,7 @@ export default function TeamPanel({ onBack }: { onBack: () => void }) {
         <h1 className="text-lg font-extrabold text-stone-900">Team</h1>
       </div>
 
-      <div className="px-5 max-w-lg w-full space-y-3">
+      <div className="px-5 max-w-lg w-full mx-auto space-y-3">
         {employees === null && (
           <div className="flex items-center justify-center py-16">
             <Loader2 className="h-6 w-6 text-stone-400 animate-spin" />

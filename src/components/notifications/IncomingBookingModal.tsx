@@ -24,7 +24,18 @@ const DECLINE_REASONS = ["Too far from my location", "Not available right now", 
  * disappearing because someone else won it / it timed out) advances to the
  * next one automatically since there's no separate "dismissed" bookkeeping.
  */
-export default function IncomingBookingModal({ enabled }: { enabled: boolean }) {
+export default function IncomingBookingModal({
+  enabled,
+  onAccepted,
+}: {
+  enabled: boolean;
+  // This modal is a sibling of PartnerHomescreen (both mount directly under
+  // DashboardContent), not a child of it, so there's no direct prop path to
+  // the tracking page from here — DashboardContent lifts a bit of state to
+  // bridge the two: this fires on a successful accept, PartnerHomescreen
+  // picks it up via its pendingTrackingBookingId prop.
+  onAccepted?: (bookingId: string) => void;
+}) {
   const { data } = useIncomingBroadcasts(enabled);
 
   const pending = (data ?? [])
@@ -47,7 +58,7 @@ export default function IncomingBookingModal({ enabled }: { enabled: boolean }) 
             mounts fresh on the main Accept/Decline screen, never mid-reason-
             picker (or mid-error) left over from whatever it replaced — no
             reset effect needed, the remount does it. */}
-        <OfferPrompt key={current.id} broadcast={current} moreWaiting={moreWaiting} />
+        <OfferPrompt key={current.id} broadcast={current} moreWaiting={moreWaiting} onAccepted={onAccepted} />
       </DialogContent>
     </Dialog>
   );
@@ -56,9 +67,11 @@ export default function IncomingBookingModal({ enabled }: { enabled: boolean }) 
 function OfferPrompt({
   broadcast,
   moreWaiting,
+  onAccepted,
 }: {
   broadcast: IncomingBroadcast;
   moreWaiting: number;
+  onAccepted?: (bookingId: string) => void;
 }) {
   const queryClient = useQueryClient();
   const [step, setStep] = useState<"offer" | "reason">("offer");
@@ -74,6 +87,7 @@ function OfferPrompt({
     try {
       await acceptBooking(broadcast.bookingId);
       await refresh();
+      onAccepted?.(broadcast.bookingId);
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
         setError("This job was just taken by another partner.");

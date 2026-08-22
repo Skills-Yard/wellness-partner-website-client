@@ -44,7 +44,7 @@ export default function NotificationsPanel({
         <h1 className="text-lg font-extrabold text-stone-900">Notifications</h1>
       </div>
 
-      <div className="px-5 max-w-lg w-full">
+      <div className="px-5 max-w-lg w-full mx-auto">
         {isLoading && notifications.length === 0 && (
           <div className="flex items-center justify-center py-16">
             <Loader2 className="h-6 w-6 text-stone-400 animate-spin" />

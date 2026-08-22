@@ -3,6 +3,7 @@
 import React from "react";
 import { ArrowLeft, ChevronRight, Briefcase, LayoutDashboard, Wallet, Banknote, GraduationCap, HelpCircle, Gift, ShoppingBag, Send, Globe } from "lucide-react";
 import type { Partner } from "@/lib/api/types";
+import PartnerAvatar from "./PartnerAvatar";
 
 interface ProfilePageProps {
   partner: Partner;
@@ -43,11 +44,10 @@ export default function ProfilePage({
 
       {/* ── Profile Info ── */}
       <div className="px-5 pt-2 pb-6 flex items-center gap-4">
-        <div className="w-16 h-16 rounded-full overflow-hidden shrink-0 shadow-sm border border-stone-100 bg-stone-100 flex items-center justify-center">
-          <span className="text-xl font-extrabold text-stone-400">
-            {(partner.name ?? "?").charAt(0).toUpperCase()}
-          </span>
-        </div>
+        <PartnerAvatar
+          partner={partner}
+          className="w-16 h-16 shrink-0 shadow-sm border border-stone-100 bg-stone-100 text-xl text-stone-400"
+        />
         <div>
           <h1 className="text-lg font-extrabold text-stone-900 tracking-tight leading-snug">
             {partner.name ?? "Vellora Partner"}

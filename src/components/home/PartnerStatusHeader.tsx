@@ -4,6 +4,7 @@ import React from "react";
 import { Bell, MapPin, Star } from "lucide-react";
 import type { Partner } from "@/lib/api/types";
 import { useUnreadNotificationCount } from "@/hooks/queries/useNotifications";
+import PartnerAvatar from "./PartnerAvatar";
 
 /**
  * Personalized identity header for the Home tab — replaces the old
@@ -34,7 +35,6 @@ export default function PartnerStatusHeader({
   partner: Partner;
   onOpenNotifications: () => void;
 }) {
-  const initials = (partner.name ?? "?").trim().charAt(0).toUpperCase() || "?";
   const isApproved = partner.status === "APPROVED";
   const { data: unreadCount = 0 } = useUnreadNotificationCount();
   const hasUnread = unreadCount > 0;
@@ -43,9 +43,10 @@ export default function PartnerStatusHeader({
     <div className="w-full bg-linear-to-br from-[#FDF3E7] to-white border-b border-stone-100">
       <div className="max-w-4xl mx-auto px-4 sm:px-8 pt-6 pb-5 flex items-start justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white border border-[#F0DDBF] shadow-sm flex items-center justify-center text-lg sm:text-xl font-extrabold text-[#C9851A] shrink-0">
-            {initials}
-          </div>
+          <PartnerAvatar
+            partner={partner}
+            className="w-12 h-12 sm:w-14 sm:h-14 bg-white border border-[#F0DDBF] shadow-sm text-lg sm:text-xl text-[#C9851A] shrink-0"
+          />
           <div className="min-w-0">
             <p className="text-[11px] font-bold uppercase tracking-wide text-[#C9851A]">{timeOfDayGreeting()}</p>
             <h1 className="text-lg sm:text-2xl font-extrabold text-stone-900 truncate leading-tight">

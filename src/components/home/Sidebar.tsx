@@ -9,7 +9,6 @@ import {
   Users,
   Landmark,
   IndianRupee,
-  User,
   Lock,
   LogOut,
   ChevronLeft,
@@ -18,6 +17,7 @@ import {
 } from "lucide-react";
 import type { Partner } from "@/lib/api/types";
 import { useUnreadNotificationCount } from "@/hooks/queries/useNotifications";
+import PartnerAvatar from "./PartnerAvatar";
 
 export type SidebarView =
   | "home"
@@ -28,7 +28,11 @@ export type SidebarView =
   | "training"
   | "notifications"
   | "money"
-  | "profile";
+  | "profile"
+  // Not a nav item (no Sidebar entry routes here) — included only so
+  // PartnerHomescreen can pass its subView straight through as activeView
+  // without every item lighting up unmatched.
+  | "tracking";
 
 interface SidebarProps {
   partner: Partner;
@@ -117,10 +121,10 @@ export default function Sidebar({
         // before a partner is APPROVED, so this has to stay reachable throughout.
         { key: "notifications", label: "Notifications", icon: Bell, badge: unreadCount, go: () => onOpenSubView("notifications") },
         { key: "money", label: "Money", icon: IndianRupee, go: () => onNavigateTab("money") },
-        { key: "profile", label: "Profile", icon: User, go: () => onNavigateTab("profile") },
+        // Profile lives in Topbar's account menu (top-right, desktop-only)
+        // instead of here now — that menu is reachable from every view,
+        // not just while this nav list is on screen.
       ];
-
-  const initials = (partner.name ?? "?").trim().charAt(0).toUpperCase() || "?";
 
   return (
     <aside
@@ -208,9 +212,10 @@ export default function Sidebar({
             collapsed ? "justify-center py-2" : "gap-2.5 px-3 py-2"
           }`}
         >
-          <div className="w-8 h-8 rounded-full bg-[#FDF3E7] text-[#C9851A] flex items-center justify-center text-xs font-extrabold shrink-0">
-            {initials}
-          </div>
+          <PartnerAvatar
+            partner={partner}
+            className="w-8 h-8 bg-[#FDF3E7] text-[#C9851A] text-xs shrink-0"
+          />
           {!collapsed && (
             <div className="min-w-0 flex-1">
               <p className="text-xs font-bold text-stone-800 truncate">{partner.name ?? "Partner"}</p>

@@ -1,13 +1,10 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, ChevronRight, Loader2 } from "lucide-react";
 import * as bookingsApi from "@/lib/api/bookings";
 import { ApiError } from "@/lib/api/client";
 import type { Booking, BookingStatus } from "@/lib/api/types";
-import StartServiceModal from "@/components/booking/StartServiceModal";
-import CancelBookingModal from "@/components/booking/CancelBookingModal";
-import DisputeBookingModal from "@/components/booking/DisputeBookingModal";
 
 const STATUS_COLORS: Partial<Record<BookingStatus, string>> = {
   BROADCASTED: "bg-amber-50 text-amber-700",
@@ -22,13 +19,6 @@ const STATUS_COLORS: Partial<Record<BookingStatus, string>> = {
   DISPUTED: "bg-red-50 text-red-700",
 };
 
-// Mirrors the backend's own gating (PaymentService.NON_CANCELLABLE_STATUSES /
-// DISPUTABLE_STATUSES) so the button only ever shows when the call it fires
-// would actually succeed — assigned-but-not-started for cancel, and
-// happening-or-happened for a dispute.
-const CANCELLABLE_STATUSES: BookingStatus[] = ["ACCEPTED", "CONFIRMED", "PARTNER_EN_ROUTE", "PARTNER_ARRIVED"];
-const DISPUTABLE_STATUSES: BookingStatus[] = ["IN_PROGRESS", "COMPLETED"];
-
 // scheduledDate is a real DateTime column on the backend, so it comes back
 // as a full ISO instant (e.g. "2026-08-21T00:00:00.000Z") rather than a
 // plain "YYYY-MM-DD" string — same thing AvailabilityPanel's formatDate and
@@ -38,7 +28,24 @@ function formatScheduledDate(dateStr: string) {
   return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
 }
 
-function BookingCard({ booking, onAction }: { booking: Booking; onAction: () => void }) {
+/**
+ * One card per booking, laid out in a flex-wrap grid (see the list
+ * container below) — status/basics only, tap through to BookingTrackingPage
+ * for everything actionable (en route/arrived/start/complete/cancel/dispute
+ * all live there now, not duplicated here). The one exception is
+ * Accept/Decline on a still-BROADCASTED booking: there's nothing to track
+ * yet at that point, so responding to the offer has to stay a list-level
+ * action — same as IncomingBookingModal's popup offers.
+ */
+function BookingRow({
+  booking,
+  onAction,
+  onOpenTracking,
+}: {
+  booking: Booking;
+  onAction: () => void;
+  onOpenTracking: (bookingId: string) => void;
+}) {
   const [busy, setBusy] = useState<string | null>(null);
 
   const run = async (key: string, fn: () => Promise<unknown>) => {
@@ -53,25 +60,15 @@ function BookingCard({ booking, onAction }: { booking: Booking; onAction: () => 
     }
   };
 
-  const actions: { key: string; label: string; run: () => Promise<unknown> }[] = [];
-  if (booking.status === "BROADCASTED") {
-    actions.push({ key: "accept", label: "Accept", run: () => bookingsApi.acceptBooking(booking.id) });
-    actions.push({ key: "reject", label: "Decline", run: () => bookingsApi.rejectBooking(booking.id, "Not available") });
-  } else if (booking.status === "ACCEPTED" || booking.status === "CONFIRMED") {
-    actions.push({ key: "en-route", label: "On my way", run: () => bookingsApi.markEnRoute(booking.id) });
-  } else if (booking.status === "PARTNER_EN_ROUTE") {
-    actions.push({ key: "arrived", label: "I've arrived", run: () => bookingsApi.markArrived(booking.id) });
-  } else if (booking.status === "IN_PROGRESS") {
-    actions.push({ key: "complete", label: "Mark complete", run: () => bookingsApi.completeBooking(booking.id) });
-  }
-  // PARTNER_ARRIVED isn't a one-tap action — it needs the client's arrival
-  // code, so it's rendered separately below via StartServiceModal.
-
-  const showCancel = CANCELLABLE_STATUSES.includes(booking.status);
-  const showDispute = DISPUTABLE_STATUSES.includes(booking.status);
+  const isBroadcast = booking.status === "BROADCASTED";
 
   return (
-    <div className="rounded-2xl border border-stone-100 bg-[#FAF9F6] p-4">
+    <div
+      onClick={isBroadcast ? undefined : () => onOpenTracking(booking.id)}
+      className={`flex-1 min-w-65 max-w-sm rounded-2xl border border-stone-100 bg-[#FAF9F6] p-4 ${
+        isBroadcast ? "" : "cursor-pointer hover:bg-stone-100/60 transition-colors"
+      }`}
+    >
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs font-bold text-stone-800">
           {booking.items?.[0]?.serviceItemName ?? "Service booking"}
@@ -87,78 +84,47 @@ function BookingCard({ booking, onAction }: { booking: Booking; onAction: () => 
       <p className="text-[11px] text-stone-500">
         {formatScheduledDate(booking.scheduledDate)} · {booking.scheduledTime}
       </p>
-      <p className="text-[11px] text-stone-400 mt-0.5">
-        You earn ₹{booking.partnerEarning.toFixed(0)}
-      </p>
-      {(actions.length > 0 || booking.status === "PARTNER_ARRIVED") && (
-        <div className="flex gap-2 mt-3">
-          {actions.map((a) => (
-            <button
-              key={a.key}
-              onClick={() => run(a.key, a.run)}
-              disabled={busy !== null}
-              className="flex-1 rounded-xl py-2 text-xs font-bold bg-stone-900 text-white hover:bg-stone-800 transition-all active:scale-[0.98] cursor-pointer disabled:opacity-60 flex items-center justify-center gap-1.5"
-            >
-              {busy === a.key && <Loader2 className="h-3 w-3 animate-spin" />}
-              {a.label}
-            </button>
-          ))}
-          {booking.status === "PARTNER_ARRIVED" && (
-            <StartServiceModal
-              bookingId={booking.id}
-              onStarted={onAction}
-              trigger={(open) => (
-                <button
-                  onClick={open}
-                  disabled={busy !== null}
-                  className="flex-1 rounded-xl py-2 text-xs font-bold bg-stone-900 text-white hover:bg-stone-800 transition-all active:scale-[0.98] cursor-pointer disabled:opacity-60"
-                >
-                  Enter code to start
-                </button>
-              )}
-            />
-          )}
-        </div>
-      )}
-      {(showCancel || showDispute) && (
-        <div className="flex gap-2 mt-2">
-          {showCancel && (
-            <CancelBookingModal
-              bookingId={booking.id}
-              onCancelled={onAction}
-              trigger={(open) => (
-                <button
-                  onClick={open}
-                  disabled={busy !== null}
-                  className="flex-1 rounded-xl py-2 text-xs font-bold border border-stone-200 text-stone-500 hover:bg-stone-100 transition-all cursor-pointer disabled:opacity-60"
-                >
-                  Cancel booking
-                </button>
-              )}
-            />
-          )}
-          {showDispute && (
-            <DisputeBookingModal
-              bookingId={booking.id}
-              onDisputed={onAction}
-              trigger={(open) => (
-                <button
-                  onClick={open}
-                  disabled={busy !== null}
-                  className="flex-1 rounded-xl py-2 text-xs font-bold border border-stone-200 text-stone-500 hover:bg-stone-100 transition-all cursor-pointer disabled:opacity-60"
-                >
-                  Report an issue
-                </button>
-              )}
-            />
-          )}
+      <div className="flex items-center justify-between mt-0.5">
+        <p className="text-[11px] text-stone-400">You earn ₹{booking.partnerEarning.toFixed(0)}</p>
+        {!isBroadcast && <ChevronRight className="h-4 w-4 text-stone-350 shrink-0" />}
+      </div>
+
+      {isBroadcast && (
+        <div className="flex gap-2 mt-3" onClick={(e) => e.stopPropagation()}>
+          <button
+            onClick={() =>
+              run("accept", async () => {
+                await bookingsApi.acceptBooking(booking.id);
+                onOpenTracking(booking.id);
+              })
+            }
+            disabled={busy !== null}
+            className="flex-1 rounded-xl py-2 text-xs font-bold bg-stone-900 text-white hover:bg-stone-800 transition-all active:scale-[0.98] cursor-pointer disabled:opacity-60 flex items-center justify-center gap-1.5"
+          >
+            {busy === "accept" && <Loader2 className="h-3 w-3 animate-spin" />}
+            Accept
+          </button>
+          <button
+            onClick={() => run("reject", () => bookingsApi.rejectBooking(booking.id, "Not available"))}
+            disabled={busy !== null}
+            className="flex-1 rounded-xl py-2 text-xs font-bold border border-stone-200 text-stone-500 hover:bg-stone-100 transition-all cursor-pointer disabled:opacity-60"
+          >
+            {busy === "reject" && <Loader2 className="h-3 w-3 animate-spin inline mr-1.5" />}
+            Decline
+          </button>
         </div>
       )}
     </div>
   );
 }
 
-export default function BookingsPanel({ onBack }: { onBack: () => void }) {
+export default function BookingsPanel({
+  onBack,
+  onOpenTracking,
+}: {
+  onBack: () => void;
+  onOpenTracking: (bookingId: string) => void;
+}) {
   const [bookings, setBookings] = useState<Booking[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -186,7 +152,7 @@ export default function BookingsPanel({ onBack }: { onBack: () => void }) {
         <h1 className="text-lg font-extrabold text-stone-900">Bookings</h1>
       </div>
 
-      <div className="px-5 max-w-lg w-full">
+      <div className="px-5 max-w-5xl w-full mx-auto">
         {bookings === null && (
           <div className="flex-1 flex items-center justify-center py-16">
             <Loader2 className="h-6 w-6 text-stone-400 animate-spin" />
@@ -194,9 +160,9 @@ export default function BookingsPanel({ onBack }: { onBack: () => void }) {
         )}
         {bookings?.length === 0 && <p className="text-sm text-stone-400 py-8 text-center">No bookings yet.</p>}
         {error && <p className="text-xs font-medium text-red-500 mb-3">{error}</p>}
-        <div className="space-y-3">
+        <div className="flex flex-wrap gap-4">
           {bookings?.map((b) => (
-            <BookingCard key={b.id} booking={b} onAction={load} />
+            <BookingRow key={b.id} booking={b} onAction={load} onOpenTracking={onOpenTracking} />
           ))}
         </div>
       </div>

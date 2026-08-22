@@ -89,7 +89,22 @@ export default function LocationSettingsTab({ partner, onSaved }: { partner: Par
     setAddressError(null);
     setAddressSaved(false);
     try {
-      await partnerApi.updateProfile({ city: city.trim(), state: state.trim(), pincode: pincode.trim() });
+      const trimmedCity = city.trim();
+      const trimmedState = state.trim();
+      const trimmedPincode = pincode.trim();
+
+      // Only send whichever of city/state/pincode actually changed —
+      // PATCH /partner/profile writes every key it's given, so resending
+      // the whole form risks clobbering a field the partner didn't touch
+      // this time. Same reasoning as PersonalInfoTab's saves.
+      const updates: Parameters<typeof partnerApi.updateProfile>[0] = {};
+      if (trimmedCity !== (partner.city ?? "")) updates.city = trimmedCity;
+      if (trimmedState !== (partner.state ?? "")) updates.state = trimmedState;
+      if (trimmedPincode !== (partner.pincode ?? "")) updates.pincode = trimmedPincode;
+
+      if (Object.keys(updates).length > 0) {
+        await partnerApi.updateProfile(updates);
+      }
       await onSaved();
       setAddressSaved(true);
       window.setTimeout(() => setAddressSaved(false), 2500);

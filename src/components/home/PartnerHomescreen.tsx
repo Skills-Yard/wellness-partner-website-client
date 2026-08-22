@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { useIsDesktopViewport } from "@/lib/hooks/useIsDesktopViewport";
 import BottomNav from "./BottomNav";
 import Sidebar from "./Sidebar";
+import Topbar from "./Topbar";
 import PartnerStatusHeader from "./PartnerStatusHeader";
 import TodayActivity from "./TodayActivity";
 import ProfilePage from "./ProfilePage";
@@ -17,15 +18,24 @@ import BookingsPanel from "./panels/BookingsPanel";
 import AvailabilityPanel from "./panels/AvailabilityPanel";
 import TeamPanel from "./panels/TeamPanel";
 import BankAccountPanel from "./panels/BankAccountPanel";
+import BookingTrackingPage from "./panels/BookingTrackingPage";
 import NotificationsPanel from "../notifications/NotificationsPanel";
 import type { Partner } from "@/lib/api/types";
 
 interface PartnerHomescreenProps {
   partner: Partner;
   onLogout: () => void;
+  // Set by DashboardContent right after IncomingBookingModal accepts an
+  // on-demand offer — that modal is a sibling of this component (both
+  // mount under DashboardContent), not a child, so there's no direct prop
+  // path to open the tracking page from there; this is the lifted-state
+  // handoff instead. onPendingBookingConsumed clears it once opened, so it
+  // doesn't refire on unrelated re-renders.
+  pendingTrackingBookingId?: string | null;
+  onPendingBookingConsumed?: () => void;
 }
 
-type SubView = "bookings" | "availability" | "team" | "bank" | "training" | "notifications" | null;
+type SubView = "bookings" | "availability" | "team" | "bank" | "training" | "notifications" | "tracking" | null;
 
 function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string | number }) {
   return (
@@ -76,11 +86,17 @@ function ManageCard({
   );
 }
 
-export default function PartnerHomescreen({ partner, onLogout }: PartnerHomescreenProps) {
+export default function PartnerHomescreen({
+  partner,
+  onLogout,
+  pendingTrackingBookingId,
+  onPendingBookingConsumed,
+}: PartnerHomescreenProps) {
   const { refreshProfile } = useAuth();
   const isDesktop = useIsDesktopViewport();
   const [activeTab, setActiveTab] = useState<"home" | "money" | "profile">("home");
   const [subView, setSubView] = useState<SubView>(null);
+  const [trackingBookingId, setTrackingBookingId] = useState<string | null>(null);
   const [showTrainingCelebration, setShowTrainingCelebration] = useState(false);
   const [checkingApproval, setCheckingApproval] = useState(false);
 
@@ -131,9 +147,27 @@ export default function PartnerHomescreen({ partner, onLogout }: PartnerHomescre
     setActiveTab(tab);
   };
 
+  const openTracking = (bookingId: string) => {
+    setTrackingBookingId(bookingId);
+    setSubView("tracking");
+  };
+
+  // Picks up an accept that just happened in IncomingBookingModal (see the
+  // prop comment above) and opens straight into that booking's tracking
+  // page, same as accepting from the Bookings list already does locally.
+  useEffect(() => {
+    if (!pendingTrackingBookingId) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot handoff read from a prop that only changes on a real accept, not a render-loop hazard
+    openTracking(pendingTrackingBookingId);
+    onPendingBookingConsumed?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- openTracking/onPendingBookingConsumed are stable closures over setState setters; only pendingTrackingBookingId should retrigger this
+  }, [pendingTrackingBookingId]);
+
   let content: React.ReactNode;
-  if (subView === "bookings") {
-    content = <BookingsPanel onBack={() => setSubView(null)} />;
+  if (subView === "tracking" && trackingBookingId) {
+    content = <BookingTrackingPage bookingId={trackingBookingId} onBack={() => setSubView(null)} />;
+  } else if (subView === "bookings") {
+    content = <BookingsPanel onBack={() => setSubView(null)} onOpenTracking={openTracking} />;
   } else if (subView === "availability") {
     content = <AvailabilityPanel partner={partner} onBack={() => setSubView(null)} />;
   } else if (subView === "team") {
@@ -175,7 +209,7 @@ export default function PartnerHomescreen({ partner, onLogout }: PartnerHomescre
           </p>
 
           {/* Today's progress + live booking mini-tracker — only meaningful once bookings can actually flow in */}
-          {isApproved && <TodayActivity onOpenBookings={() => openSubView("bookings")} />}
+          {isApproved && <TodayActivity onOpenBooking={openTracking} />}
 
           {/* This component only ever renders for PENDING_APPROVAL/APPROVED — TRAINING goes to
               TrainingGateScreen instead — so the only non-approved status left here is a final
@@ -238,7 +272,10 @@ export default function PartnerHomescreen({ partner, onLogout }: PartnerHomescre
         onOpenSubView={openSubView}
         onLogout={onLogout}
       />
-      <div className="flex-1 min-w-0">{content}</div>
+      <div className="flex-1 min-w-0 flex flex-col">
+        <Topbar partner={partner} onNavigateTab={goToTab} />
+        <div className="flex-1 min-w-0">{content}</div>
+      </div>
       {subView === null && <BottomNav active={activeTab} onNavigate={goToTab} />}
 
       {showTrainingCelebration && (

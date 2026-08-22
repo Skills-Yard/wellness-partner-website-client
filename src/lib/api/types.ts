@@ -297,6 +297,18 @@ export interface Booking {
     durationMinutes: number;
     quantity: number;
   }>;
+  // Not present on the leaner GET /partner/bookings list shape (confirmed
+  // absent there), but the same Address relation IS confirmed on the
+  // Booking entity via IncomingBroadcast.booking.address (see that type
+  // below) — likely present on GET /partner/bookings/:id too since that's
+  // a single-record detail fetch, just unconfirmed. Optional and rendered
+  // defensively (BookingTrackingPage) rather than assumed.
+  address?: {
+    city?: string | null;
+    pincode?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+  } | null;
 }
 
 export interface Partner {

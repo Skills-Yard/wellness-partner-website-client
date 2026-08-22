@@ -173,7 +173,7 @@ function CompactDayRow({
 
 function PageSkeleton() {
   return (
-    <div className="px-5 sm:px-8 max-w-5xl w-full space-y-6">
+    <div className="px-5 sm:px-8 max-w-5xl w-full mx-auto space-y-6">
       <Shimmer className="h-24 w-full rounded-2xl" />
       <Shimmer className="h-40 w-full rounded-2xl" />
       <Shimmer className="h-72 w-full rounded-2xl" />
@@ -359,7 +359,7 @@ export default function AvailabilityPanel({ partner, onBack }: { partner: Partne
   return (
     <div className="min-h-screen bg-white flex flex-col pb-28 lg:pb-10">
       {/* ── Header ── */}
-      <div className="px-5 sm:px-8 pt-6 pb-6 max-w-5xl w-full">
+      <div className="px-5 sm:px-8 pt-6 pb-6 max-w-5xl w-full mx-auto">
         <div className="flex items-start justify-between gap-6 flex-wrap">
           <div className="flex items-start gap-3 min-w-0">
             <button
@@ -394,7 +394,7 @@ export default function AvailabilityPanel({ partner, onBack }: { partner: Partne
       {!loaded ? (
         <PageSkeleton />
       ) : (
-        <div className="px-5 sm:px-8 max-w-5xl w-full space-y-6 animate-fade-in-up">
+        <div className="px-5 sm:px-8 max-w-5xl w-full mx-auto space-y-6 animate-fade-in-up">
           {/* ══════════════ Mobile / tablet layout (below xl) ══════════════ */}
           <div className="xl:hidden space-y-6">
             {/* Slot size */}

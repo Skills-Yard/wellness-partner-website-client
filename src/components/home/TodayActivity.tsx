@@ -1,11 +1,10 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { Coffee, Clock3, Loader2 } from "lucide-react";
+import { Coffee, Clock3, Loader2, ChevronRight } from "lucide-react";
 import * as bookingsApi from "@/lib/api/bookings";
 import { ApiError } from "@/lib/api/client";
 import type { Booking, BookingStatus } from "@/lib/api/types";
-import StartServiceModal from "@/components/booking/StartServiceModal";
 
 // A booking counts as "live" once the partner is actively on it — en route,
 // on-site, or mid-service. "Upcoming" is the next one that's confirmed but
@@ -29,29 +28,16 @@ function serviceName(booking: Booking) {
 
 function LiveBookingCard({
   booking,
-  onAction,
-  onOpenBookings,
+  onOpenBooking,
 }: {
   booking: Booking;
-  onAction: () => void;
-  onOpenBookings: () => void;
+  onOpenBooking: (bookingId: string) => void;
 }) {
-  const [busy, setBusy] = useState(false);
-
-  const runAction = async (action: () => Promise<unknown>) => {
-    setBusy(true);
-    try {
-      await action();
-      onAction();
-    } catch {
-      // best-effort — partner can just retry the button
-    } finally {
-      setBusy(false);
-    }
-  };
-
   return (
-    <div className="rounded-2xl border border-[#F0DDBF] bg-linear-to-br from-[#FFF8EC] to-white shadow-sm p-4">
+    <button
+      onClick={() => onOpenBooking(booking.id)}
+      className="w-full text-left rounded-2xl border border-[#F0DDBF] bg-linear-to-br from-[#FFF8EC] to-white shadow-sm p-4 cursor-pointer hover:shadow-md transition-shadow"
+    >
       <div className="flex items-center gap-2 mb-3">
         <span className="relative flex h-2 w-2">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
@@ -63,57 +49,18 @@ function LiveBookingCard({
         </span>
       </div>
 
-      <p className="text-sm font-bold text-stone-900">{serviceName(booking)}</p>
-      <p className="text-xs text-stone-500 mt-0.5">
-        {booking.scheduledTime} · You earn ₹{booking.partnerEarning.toFixed(0)}
-      </p>
-
-      <div className="flex gap-2 mt-3">
-        {booking.status === "PARTNER_EN_ROUTE" && (
-          <button
-            onClick={() => runAction(() => bookingsApi.markArrived(booking.id))}
-            disabled={busy}
-            className="flex-1 rounded-xl py-2.5 text-xs font-bold bg-stone-900 text-white hover:bg-stone-800 transition-all active:scale-[0.98] cursor-pointer disabled:opacity-60 flex items-center justify-center gap-1.5"
-          >
-            {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            I&apos;ve arrived
-          </button>
-        )}
-        {booking.status === "PARTNER_ARRIVED" && (
-          <StartServiceModal
-            bookingId={booking.id}
-            onStarted={onAction}
-            trigger={(open) => (
-              <button
-                onClick={open}
-                disabled={busy}
-                className="flex-1 rounded-xl py-2.5 text-xs font-bold bg-stone-900 text-white hover:bg-stone-800 transition-all active:scale-[0.98] cursor-pointer disabled:opacity-60"
-              >
-                Enter code to start
-              </button>
-            )}
-          />
-        )}
-        {booking.status === "IN_PROGRESS" && (
-          <button
-            onClick={() => runAction(() => bookingsApi.completeBooking(booking.id))}
-            disabled={busy}
-            className="flex-1 rounded-xl py-2.5 text-xs font-bold bg-stone-900 text-white hover:bg-stone-800 transition-all active:scale-[0.98] cursor-pointer disabled:opacity-60 flex items-center justify-center gap-1.5"
-          >
-            {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            Mark complete
-          </button>
-        )}
-        <button
-          onClick={onOpenBookings}
-          className="rounded-xl py-2.5 px-4 text-xs font-bold border border-stone-200 text-stone-600 hover:bg-stone-50 transition-all cursor-pointer"
-        >
-          View
-        </button>
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-bold text-stone-900 truncate">{serviceName(booking)}</p>
+          <p className="text-xs text-stone-500 mt-0.5">
+            {booking.scheduledTime} · You earn ₹{booking.partnerEarning.toFixed(0)}
+          </p>
+        </div>
+        <span className="shrink-0 flex items-center gap-1 rounded-xl bg-stone-900 text-white px-3.5 py-2 text-xs font-bold">
+          Track <ChevronRight className="h-3.5 w-3.5" />
+        </span>
       </div>
-
-      {/* Full live tracking (map, ETA, timeline) is a later page — this card is the "mini" stand-in until then. */}
-    </div>
+    </button>
   );
 }
 
@@ -178,16 +125,17 @@ function TodayProgressCard({
 }
 
 /**
- * "Today's progress" + a mini live-tracking card for whatever booking is
- * currently active. Fetches the partner's own bookings once on mount, same
- * fetch-on-mount pattern as BookingsPanel/TrainingCenter elsewhere in this
- * app; the only difference here is a second effect that re-polls every 30s,
- * but only while a booking is actually live, so the card doesn't go stale
- * mid-job without the partner needing to manually reload. A full tracking
- * page (map, ETA, live updates) is later work — this is the stand-in until
- * then, so the polling is intentionally simple rather than a websocket.
+ * "Today's progress" + a mini live-status card for whatever booking is
+ * currently active — glanceable status only; tapping it opens
+ * BookingTrackingPage (via onOpenBooking) for the actual timeline and
+ * actions, rather than duplicating those buttons here too. Fetches the
+ * partner's own bookings once on mount, same fetch-on-mount pattern as
+ * BookingsPanel/TrainingCenter elsewhere in this app; the only difference
+ * here is a second effect that re-polls every 30s, but only while a
+ * booking is actually live, so the card doesn't go stale mid-job without
+ * the partner needing to manually reload.
  */
-export default function TodayActivity({ onOpenBookings }: { onOpenBookings: () => void }) {
+export default function TodayActivity({ onOpenBooking }: { onOpenBooking: (bookingId: string) => void }) {
   const [bookings, setBookings] = useState<Booking[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Holds the polling interval's id so the second effect below can start
@@ -250,7 +198,7 @@ export default function TodayActivity({ onOpenBookings }: { onOpenBookings: () =
     <div className="flex flex-col gap-4">
       {error && <p className="text-xs font-medium text-red-500">{error}</p>}
 
-      {liveBooking && <LiveBookingCard booking={liveBooking} onAction={loadBookings} onOpenBookings={onOpenBookings} />}
+      {liveBooking && <LiveBookingCard booking={liveBooking} onOpenBooking={onOpenBooking} />}
 
       <TodayProgressCard
         totalToday={todayBookings.length}

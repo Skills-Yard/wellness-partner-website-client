@@ -21,6 +21,7 @@ import { uploadKycFile } from "@/lib/api/upload";
 import { ApiError } from "@/lib/api/client";
 import ToggleSwitch from "./ToggleSwitch";
 import ImageCropModal from "./ImageCropModal";
+import PartnerAvatar from "../PartnerAvatar";
 import type { Partner } from "@/lib/api/types";
 
 /** Free-form tag input for languages — there's no fixed language list in
@@ -181,8 +182,6 @@ function PersonalInformationCard({
   const [cropFile, setCropFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const initials = (partner.name ?? "?").trim().charAt(0).toUpperCase() || "?";
-
   const startEdit = () => {
     setName(partner.name ?? "");
     setEmail(partner.email ?? "");
@@ -197,15 +196,26 @@ function PersonalInformationCard({
     setSaving(true);
     setError(null);
     try {
-      await partnerApi.updateProfile({
-        name: name.trim(),
-        email: email.trim(),
-        bio: bio.trim(),
-        yearsOfExperience: yearsOfExperience.trim()
-          ? Number(yearsOfExperience)
-          : undefined,
-        languages,
-      });
+      const trimmedName = name.trim();
+      const trimmedEmail = email.trim();
+      const trimmedBio = bio.trim();
+      const yearsValue = yearsOfExperience.trim() ? Number(yearsOfExperience) : undefined;
+
+      // Only send whichever fields actually changed — PATCH /partner/profile
+      // writes every key it's given, so unconditionally resending the whole
+      // form risks clobbering a field the partner never touched this time
+      // (e.g. blanking email back to "" just because the input started
+      // empty) even though nothing about it was actually edited.
+      const updates: Parameters<typeof partnerApi.updateProfile>[0] = {};
+      if (trimmedName !== (partner.name ?? "")) updates.name = trimmedName;
+      if (trimmedEmail !== (partner.email ?? "")) updates.email = trimmedEmail;
+      if (trimmedBio !== (partner.bio ?? "")) updates.bio = trimmedBio;
+      if (yearsValue !== (partner.yearsOfExperience ?? undefined)) updates.yearsOfExperience = yearsValue;
+      if (JSON.stringify(languages) !== JSON.stringify(partner.languages)) updates.languages = languages;
+
+      if (Object.keys(updates).length > 0) {
+        await partnerApi.updateProfile(updates);
+      }
       await onSaved();
       setEditing(false);
     } catch (err) {
@@ -233,13 +243,13 @@ function PersonalInformationCard({
   // ends up under a "kyc/" key prefix for what's actually a public profile
   // photo. Known, deliberate trade-off until a real endpoint exists.
   //
-  // profilePhotoKey is a raw storage key, not a browsable URL (same as the
-  // KYC document keys) — there's no known base path to turn it back into
-  // one, so what actually gets shown after this is the locally-cropped
-  // preview (photoPreviewUrl, lifted to DesktopProfilePage so the page
-  // header shows it too), not a re-fetch of the key. That preview only
-  // lasts this session; reloading the page will show initials again until
-  // a resolvable URL exists for this field.
+  // Despite the name, profilePhotoKey is saved (below) as the full
+  // `${cdnDomain}/${r2Key}` URL, not a raw storage key — so it's directly
+  // browsable and PartnerAvatar can render it straight from `partner` after
+  // a refetch. photoPreviewUrl is only needed for the gap before that
+  // refetch lands: it shows the locally-cropped file immediately (lifted to
+  // DesktopProfilePage so the page header shows it too) instead of waiting
+  // on the network round trip.
   const handleCropConfirm = async (blob: Blob, previewUrl: string) => {
     setCropFile(null);
     setUploadingPhoto(true);
@@ -283,17 +293,11 @@ function PersonalInformationCard({
             Profile Photo
           </p>
           <div className="relative w-20 h-20">
-            <div className="w-20 h-20 rounded-full bg-stone-100 flex items-center justify-center text-xl font-extrabold text-stone-400 overflow-hidden">
-              {photoPreviewUrl ? (
-                <img
-                  src={photoPreviewUrl}
-                  alt=""
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                initials
-              )}
-            </div>
+            <PartnerAvatar
+              partner={partner}
+              photoUrl={photoPreviewUrl}
+              className="w-20 h-20 bg-stone-100 text-xl text-stone-400"
+            />
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={uploadingPhoto}
@@ -456,10 +460,17 @@ function ServiceAvailabilityCard({
     setSaving(true);
     setError(null);
     try {
-      await partnerApi.updateProfile({
-        serviceRadiusKm: Number(serviceRadiusKm),
-        bufferMinutes: Number(bufferMinutes),
-      });
+      const radiusValue = Number(serviceRadiusKm);
+      const bufferValue = Number(bufferMinutes);
+
+      // Same "only send what changed" reasoning as PersonalInformationCard.
+      const updates: Parameters<typeof partnerApi.updateProfile>[0] = {};
+      if (radiusValue !== partner.serviceRadiusKm) updates.serviceRadiusKm = radiusValue;
+      if (bufferValue !== partner.bufferMinutes) updates.bufferMinutes = bufferValue;
+
+      if (Object.keys(updates).length > 0) {
+        await partnerApi.updateProfile(updates);
+      }
       await onSaved();
       setEditing(false);
     } catch (err) {
