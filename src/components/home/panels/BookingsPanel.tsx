@@ -1,10 +1,13 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import React, { useState } from "react";
+import { ArrowLeft, Loader2, Search } from "lucide-react";
 import * as bookingsApi from "@/lib/api/bookings";
 import { ApiError } from "@/lib/api/client";
 import type { Booking, BookingStatus } from "@/lib/api/types";
+import { usePaginatedList } from "@/hooks/usePaginatedList";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { LoadMoreButton } from "@/components/ui/load-more-button";
 import StartServiceModal from "@/components/booking/StartServiceModal";
 import CancelBookingModal from "@/components/booking/CancelBookingModal";
 import DisputeBookingModal from "@/components/booking/DisputeBookingModal";
@@ -159,23 +162,15 @@ function BookingCard({ booking, onAction }: { booking: Booking; onAction: () => 
 }
 
 export default function BookingsPanel({ onBack }: { onBack: () => void }) {
-  const [bookings, setBookings] = useState<Booking[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const q = useDebouncedValue(search);
 
-  const load = async () => {
-    try {
-      const data = await bookingsApi.getBookings();
-      setBookings(data);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Could not load your bookings.");
-      setBookings([]);
-    }
-  };
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial fetch-on-mount, not a render-loop hazard
-    load();
-  }, []);
+  const { items: bookings, isLoading, isFetchingNextPage, hasMore, loadMore, error, refetch } =
+    usePaginatedList<Booking>(
+      ["partner-bookings", q],
+      (page, limit) => bookingsApi.getBookingsPage(page, limit, { q: q || undefined }),
+      { limit: 20 }
+    );
 
   return (
     <div className="min-h-screen bg-white flex flex-col pb-28 lg:pb-10">
@@ -187,18 +182,37 @@ export default function BookingsPanel({ onBack }: { onBack: () => void }) {
       </div>
 
       <div className="px-5 max-w-lg w-full">
-        {bookings === null && (
+        <div className="relative mb-4">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by customer or partner name"
+            className="w-full rounded-xl border border-stone-200 py-2.5 pl-9 pr-3 text-sm text-stone-800 placeholder:text-stone-400 focus:border-stone-400 focus:outline-none"
+          />
+        </div>
+
+        {isLoading && (
           <div className="flex-1 flex items-center justify-center py-16">
             <Loader2 className="h-6 w-6 text-stone-400 animate-spin" />
           </div>
         )}
-        {bookings?.length === 0 && <p className="text-sm text-stone-400 py-8 text-center">No bookings yet.</p>}
-        {error && <p className="text-xs font-medium text-red-500 mb-3">{error}</p>}
+        {!isLoading && bookings.length === 0 && (
+          <p className="text-sm text-stone-400 py-8 text-center">
+            {q ? "No bookings match your search." : "No bookings yet."}
+          </p>
+        )}
+        {error && (
+          <p className="text-xs font-medium text-red-500 mb-3">
+            {error instanceof ApiError ? error.message : "Could not load your bookings."}
+          </p>
+        )}
         <div className="space-y-3">
-          {bookings?.map((b) => (
-            <BookingCard key={b.id} booking={b} onAction={load} />
+          {bookings.map((b) => (
+            <BookingCard key={b.id} booking={b} onAction={() => void refetch()} />
           ))}
         </div>
+        {hasMore && <LoadMoreButton onClick={loadMore} loading={isFetchingNextPage} />}
       </div>
     </div>
   );

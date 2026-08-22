@@ -1,8 +1,13 @@
-import { request, fetchAllPaginated } from "./client";
+import { request, requestEnvelope, fetchAllPaginated } from "./client";
 import type { PartnerEmployee } from "./types";
 
 export function getEmployees() {
   return fetchAllPaginated<PartnerEmployee>((page, limit) => `/partner/employees?page=${page}&limit=${limit}`);
+}
+
+// Single-page variant for usePaginatedList-backed screens (TeamPanel).
+export function getEmployeesPage(page: number, limit: number) {
+  return requestEnvelope<PartnerEmployee[]>(`/partner/employees?page=${page}&limit=${limit}`);
 }
 
 export function createEmployee(data: {

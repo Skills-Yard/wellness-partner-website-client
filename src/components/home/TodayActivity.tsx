@@ -179,13 +179,18 @@ function TodayProgressCard({
 
 /**
  * "Today's progress" + a mini live-tracking card for whatever booking is
- * currently active. Fetches the partner's own bookings once on mount, same
- * fetch-on-mount pattern as BookingsPanel/TrainingCenter elsewhere in this
- * app; the only difference here is a second effect that re-polls every 30s,
- * but only while a booking is actually live, so the card doesn't go stale
- * mid-job without the partner needing to manually reload. A full tracking
- * page (map, ETA, live updates) is later work — this is the stand-in until
- * then, so the polling is intentionally simple rather than a websocket.
+ * currently active. Asks the backend for just today's bookings directly
+ * (`scheduledDate` filter) instead of walking the partner's entire booking
+ * history and filtering client-side — this card only ever needs a handful
+ * of rows, so a single bounded page (limit 100, comfortably above a day's
+ * realistic booking count) replaces what used to be a full-history fetch
+ * repeated on every mount and every 30s poll. Same fetch-on-mount pattern
+ * as BookingsPanel/TrainingCenter elsewhere in this app; the only
+ * difference here is a second effect that re-polls every 30s, but only
+ * while a booking is actually live, so the card doesn't go stale mid-job
+ * without the partner needing to manually reload. A full tracking page
+ * (map, ETA, live updates) is later work — this is the stand-in until then,
+ * so the polling is intentionally simple rather than a websocket.
  */
 export default function TodayActivity({ onOpenBookings }: { onOpenBookings: () => void }) {
   const [bookings, setBookings] = useState<Booking[] | null>(null);
@@ -196,8 +201,10 @@ export default function TodayActivity({ onOpenBookings }: { onOpenBookings: () =
 
   const loadBookings = async () => {
     try {
-      const data = await bookingsApi.getBookings();
-      setBookings(data);
+      const { data } = await bookingsApi.getBookingsPage(1, 100, {
+        scheduledDate: todayDateString(),
+      });
+      setBookings(data ?? []);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not load today's bookings.");
     }
@@ -234,12 +241,9 @@ export default function TodayActivity({ onOpenBookings }: { onOpenBookings: () =
     );
   }
 
-  const today = todayDateString();
-  // scheduledDate is a real DateTime column on the backend, so it comes back
-  // as a full ISO instant (e.g. "2026-08-21T00:00:00.000Z") rather than a
-  // plain "YYYY-MM-DD" string — compare just the date portion, same fix as
-  // AvailabilityPanel's formatDate needed for the same underlying reason.
-  const todayBookings = bookings.filter((b) => b.scheduledDate.slice(0, 10) === today);
+  // Already scoped to today server-side (getBookingsPage's scheduledDate
+  // filter above) — no client-side date filtering needed any more.
+  const todayBookings = bookings;
   const completedToday = todayBookings.filter((b) => b.status === "COMPLETED");
   const upcomingToday = todayBookings
     .filter((b) => UPCOMING_STATUSES.includes(b.status))
