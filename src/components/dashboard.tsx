@@ -15,6 +15,8 @@ import DesktopDocumentsUnderReview from "./loginOnboarding/desktop/DesktopDocume
 import BlockedScreen from "../components/status/BlockedScreen";
 import PartnerHomescreen from "./home/PartnerHomescreen";
 import TrainingGateScreen from "./home/TrainingGateScreen";
+import PushNotificationBootstrap from "./notifications/PushNotificationBootstrap";
+import IncomingBookingModal from "./notifications/IncomingBookingModal";
 
 function FullScreenSpinner() {
   return (
@@ -61,22 +63,23 @@ export default function DashboardContent() {
     );
   }
 
+  let screen: React.ReactNode;
   switch (partner.status) {
     case "INCOMPLETE":
-      return (
-        <OnboardingWizardProvider>
-          <WizardShell>{(partner.onboardingStep ?? 1) < 2 ? <ProfileSetupFlow /> : <KycFlow />}</WizardShell>
-        </OnboardingWizardProvider>
+      screen = (
+        <OnboardingShell>
+          {(partner.onboardingStep ?? 1) < 2 ? <ProfileSetupFlow /> : <KycFlow />}
+        </OnboardingShell>
       );
+      break;
 
     case "PENDING_KYC":
-      return (
-        <OnboardingWizardProvider>
-          <WizardShell>
-            <KycFlow />
-          </WizardShell>
-        </OnboardingWizardProvider>
+      screen = (
+        <OnboardingShell>
+          <KycFlow />
+        </OnboardingShell>
       );
+      break;
 
     // Desktop reuses the same wizard sidebar as the rest of the flow (with
     // the top bar enabled, and "Verify Identity" showing an "Under review"
@@ -84,24 +87,20 @@ export default function DashboardContent() {
     // DesktopDocumentsUnderReview). Mobile keeps its own dedicated
     // full-screen version exactly as it already was.
     case "KYC_SUBMITTED":
-      return isDesktop ? (
-        <OnboardingWizardProvider>
-          <OnboardingWizardShell topBar>
-            <DesktopDocumentsUnderReview />
-          </OnboardingWizardShell>
-        </OnboardingWizardProvider>
-      ) : (
+      screen = (
         <OnboardingShell>
           <DocumentsUnderReviewScreen />
         </OnboardingShell>
       );
+      break;
 
     // Mandatory training isn't done yet — nothing else in the dashboard is
     // reachable (not even a locked-looking preview of it), so this is its
     // own full screen rather than something PartnerHomescreen renders
     // inline. See TrainingGateScreen.
     case "TRAINING":
-      return <TrainingGateScreen partner={partner} onLogout={() => logout()} />;
+      screen = <TrainingGateScreen partner={partner} onLogout={() => logout()} />;
+      break;
 
     // PENDING_APPROVAL and APPROVED both render the real dashboard —
     // training is already complete by PENDING_APPROVAL, so PartnerHomescreen
@@ -110,18 +109,33 @@ export default function DashboardContent() {
     // shape entirely.
     case "PENDING_APPROVAL":
     case "APPROVED":
-      return <PartnerHomescreen partner={partner} onLogout={() => logout()} />;
+      screen = <PartnerHomescreen partner={partner} onLogout={() => logout()} />;
+      break;
 
     case "SUSPENDED":
     case "REJECTED":
     case "DEACTIVATED":
-      return (
+      screen = (
         <OnboardingShell>
           <BlockedScreen status={partner.status} />
         </OnboardingShell>
       );
+      break;
 
     default:
-      return <FullScreenSpinner />;
+      screen = <FullScreenSpinner />;
   }
+
+  return (
+    <>
+      {screen}
+      {/* Mounted once for every authenticated status — not just
+          PENDING_APPROVAL/APPROVED — so a partner still in KYC/training
+          gets pushes too (KYC approved/rejected, training reminders, ...).
+          IncomingBookingModal's own polling is separately gated to APPROVED
+          only, since on-demand broadcasts are never sent to anyone else. */}
+      <PushNotificationBootstrap enabled />
+      <IncomingBookingModal enabled={partner.status === "APPROVED"} />
+    </>
+  );
 }

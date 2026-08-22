@@ -5,6 +5,7 @@ import { Coffee, Clock3, Loader2 } from "lucide-react";
 import * as bookingsApi from "@/lib/api/bookings";
 import { ApiError } from "@/lib/api/client";
 import type { Booking, BookingStatus } from "@/lib/api/types";
+import StartServiceModal from "@/components/booking/StartServiceModal";
 
 // A booking counts as "live" once the partner is actively on it — en route,
 // on-site, or mid-service. "Upcoming" is the next one that's confirmed but
@@ -64,7 +65,7 @@ function LiveBookingCard({
 
       <p className="text-sm font-bold text-stone-900">{serviceName(booking)}</p>
       <p className="text-xs text-stone-500 mt-0.5">
-        {booking.scheduledTime} · You earn ₹{(booking.partnerEarning / 100).toFixed(0)}
+        {booking.scheduledTime} · You earn ₹{booking.partnerEarning.toFixed(0)}
       </p>
 
       <div className="flex gap-2 mt-3">
@@ -77,6 +78,21 @@ function LiveBookingCard({
             {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
             I&apos;ve arrived
           </button>
+        )}
+        {booking.status === "PARTNER_ARRIVED" && (
+          <StartServiceModal
+            bookingId={booking.id}
+            onStarted={onAction}
+            trigger={(open) => (
+              <button
+                onClick={open}
+                disabled={busy}
+                className="flex-1 rounded-xl py-2.5 text-xs font-bold bg-stone-900 text-white hover:bg-stone-800 transition-all active:scale-[0.98] cursor-pointer disabled:opacity-60"
+              >
+                Enter code to start
+              </button>
+            )}
+          />
         )}
         {booking.status === "IN_PROGRESS" && (
           <button
@@ -146,7 +162,7 @@ function TodayProgressCard({
 
       <div className="flex items-center justify-between text-xs">
         <span className="text-stone-500">Earned today</span>
-        <span className="font-bold text-stone-900">₹{(earningsToday / 100).toFixed(0)}</span>
+        <span className="font-bold text-stone-900">₹{earningsToday.toFixed(0)}</span>
       </div>
 
       {nextBooking && (

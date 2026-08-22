@@ -281,6 +281,12 @@ export interface Booking {
   estimatedEndTime: string;
   estimatedDurationMinutes: number;
   clientNotes?: string | null;
+  // Money fields (totalAmount/partnerEarning, and BookingItem.price below)
+  // are plain rupee integers, NOT paise — despite the "minor units" comment
+  // on the backend's Payment model, nothing in BookingService ever
+  // multiplies/divides by 100 (confirmed against wellness-website-client's
+  // src/types/booking.ts, which documents the same convention). Do not
+  // divide these by 100 when displaying them.
   totalAmount: number;
   partnerEarning: number;
   items?: Array<{
@@ -329,6 +335,86 @@ export interface Partner {
   availability?: PartnerAvailability[];
   employees?: PartnerEmployee[];
   trainingProgress?: PartnerTrainingProgress[];
+}
+
+// Backend NotificationType enum (prisma/schema/enums.prisma) — kept as a
+// loose string rather than every literal, since the UI here never branches
+// on it: title/body are always backend-authored copy, and the one behavior
+// that *does* depend on the notification (the on-demand accept/decline
+// popup) is driven off IncomingBroadcast/useIncomingBroadcasts polling, not
+// off this field — see IncomingBookingModal.
+export type NotificationChannel = "PUSH" | "SMS" | "WHATSAPP" | "EMAIL" | "IN_APP";
+
+export interface NotificationItem {
+  id: string;
+  recipientRole: "CLIENT" | "PARTNER" | "ADMIN";
+  recipientId: string;
+  title: string;
+  body: string;
+  type: string;
+  channel: NotificationChannel;
+  deeplink?: string | null;
+  imageKey?: string | null;
+  data?: Record<string, unknown> | null;
+  isRead: boolean;
+  readAt?: string | null;
+  isSent: boolean;
+  sentAt?: string | null;
+  createdAt: string;
+}
+
+export type RegisterDeviceTokenBody = {
+  fcmToken: string;
+  deviceType: "WEB" | "ANDROID" | "IOS";
+  deviceName?: string;
+  deviceModel?: string;
+};
+
+// GET /partner/bookings/incoming (MatchmakingService.findIncomingBroadcasts)
+// — one row per on-demand booking currently broadcast to this partner and
+// still awaiting a response. `booking` here is the raw Prisma row (every
+// scalar column, unlike the leaner shape GET /partner/bookings returns), so
+// it's typed standalone rather than reusing the `Booking` interface above.
+export type BroadcastResponse = "PENDING" | "ACCEPTED" | "REJECTED" | "TIMEOUT" | "SKIPPED";
+
+export interface IncomingBroadcastItem {
+  id: string;
+  serviceItemId: string;
+  serviceItemName: string;
+  durationLabel?: string | null;
+  price: number;
+  durationMinutes: number;
+  quantity: number;
+  serviceItem: { name: string; cardTitle: string };
+}
+
+export interface IncomingBroadcast {
+  id: string;
+  bookingId: string;
+  partnerId: string;
+  broadcastedAt: string;
+  response: BroadcastResponse;
+  respondedAt?: string | null;
+  rejectionReason?: string | null;
+  notified: boolean;
+  booking: {
+    id: string;
+    bookingType: "ON_DEMAND" | "SCHEDULED" | "RECURRING_INSTANCE";
+    status: BookingStatus;
+    scheduledDate: string;
+    scheduledTime: string;
+    estimatedDurationMinutes: number;
+    clientNotes?: string | null;
+    totalAmount: number;
+    partnerEarning: number;
+    address: {
+      city?: string | null;
+      pincode?: string | null;
+      latitude: number;
+      longitude: number;
+    };
+    items: IncomingBroadcastItem[];
+  };
 }
 
 // Envelope shapes produced by the backend's TransformInterceptor /

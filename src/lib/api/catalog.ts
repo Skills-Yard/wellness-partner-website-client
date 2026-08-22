@@ -1,4 +1,4 @@
-import { request } from "./client";
+import { request, fetchAllPaginated } from "./client";
 import type { ServiceCategory, ServiceItem } from "./types";
 
 // Both public endpoints (no auth guard on the backend controllers) — safe to
@@ -19,8 +19,11 @@ export function getCategories() {
 // this returns every active item globally, which is why the onboarding flow
 // always resolves a zone first (see ServiceAreaStep) before calling this.
 export function getServiceItems(zoneId?: string) {
-  return request<ServiceItem[]>("/catalog/service-items", {
-    auth: false,
-    headers: zoneId ? { "x-zone-id": zoneId } : undefined,
-  });
+  return fetchAllPaginated<ServiceItem>(
+    (page, limit) => `/catalog/service-items?page=${page}&limit=${limit}`,
+    {
+      auth: false,
+      headers: zoneId ? { "x-zone-id": zoneId } : undefined,
+    }
+  );
 }

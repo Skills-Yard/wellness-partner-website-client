@@ -3,6 +3,7 @@
 import React from "react";
 import { Bell, MapPin, Star } from "lucide-react";
 import type { Partner } from "@/lib/api/types";
+import { useUnreadNotificationCount } from "@/hooks/queries/useNotifications";
 
 /**
  * Personalized identity header for the Home tab — replaces the old
@@ -26,9 +27,17 @@ function timeOfDayGreeting() {
   return "Good evening";
 }
 
-export default function PartnerStatusHeader({ partner }: { partner: Partner }) {
+export default function PartnerStatusHeader({
+  partner,
+  onOpenNotifications,
+}: {
+  partner: Partner;
+  onOpenNotifications: () => void;
+}) {
   const initials = (partner.name ?? "?").trim().charAt(0).toUpperCase() || "?";
   const isApproved = partner.status === "APPROVED";
+  const { data: unreadCount = 0 } = useUnreadNotificationCount();
+  const hasUnread = unreadCount > 0;
 
   return (
     <div className="w-full bg-linear-to-br from-[#FDF3E7] to-white border-b border-stone-100">
@@ -63,10 +72,19 @@ export default function PartnerStatusHeader({ partner }: { partner: Partner }) {
         </div>
 
         <button
-          className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-white border border-stone-100 shadow-sm flex items-center justify-center shrink-0 cursor-pointer hover:bg-stone-50 transition-colors"
-          aria-label="Notifications"
+          onClick={onOpenNotifications}
+          className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-white border border-stone-100 shadow-sm flex items-center justify-center shrink-0 cursor-pointer hover:bg-stone-50 transition-colors"
+          aria-label={hasUnread ? `Notifications, ${unreadCount} unread` : "Notifications"}
         >
           <Bell className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-stone-600" strokeWidth={1.8} />
+          {hasUnread && (
+            <span className="absolute -top-1 -right-1 flex h-4 w-4">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#C9851A] opacity-75" />
+              <span className="relative inline-flex h-4 w-4 items-center justify-center rounded-full bg-[#C9851A] text-[9px] font-bold text-white">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            </span>
+          )}
         </button>
       </div>
     </div>
