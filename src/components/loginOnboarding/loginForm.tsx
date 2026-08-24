@@ -75,6 +75,21 @@ export default function LoginForm() {
       setNotification({ visible: true, message: `Your verification code is ${res.otp}` });
       setTimeout(() => setNotification({ visible: false, message: "" }), 3000);
     }
+    // Only ever set outside production — see RequestOtpResponse.otp — so
+    // this is a dev/staging convenience, never something a real partner's
+    // browser could read off a live SMS.
+    return res.otp ?? null;
+  };
+
+  // Fills every box with a code the app already has (see callers below)
+  // and verifies it right away — there's nothing to gain from making
+  // whoever's testing type out a code that's already sitting in the
+  // response. Kept as a brief, visible fill rather than an instant jump
+  // straight to "Verifying…" so it still reads as "the code arrived",
+  // not as the screen skipping itself.
+  const autoFillOtp = (code: string) => {
+    setOtp(code.split("").slice(0, 6));
+    setTimeout(() => submitOtp(code), 300);
   };
 
   const handlePhoneSubmit = async () => {
@@ -82,10 +97,11 @@ export default function LoginForm() {
     setPhoneLoading(true);
     setPhoneError(null);
     try {
-      await requestOtpForCurrentPhone();
+      const code = await requestOtpForCurrentPhone();
       setOtp(Array(6).fill(""));
       startResendTimer();
       setStep("OTP");
+      if (code) autoFillOtp(code);
     } catch (err) {
       setPhoneError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
     } finally {
@@ -97,9 +113,10 @@ export default function LoginForm() {
     if (otpLoading) return;
     setOtpError(null);
     try {
-      await requestOtpForCurrentPhone();
+      const code = await requestOtpForCurrentPhone();
       setOtp(Array(6).fill(""));
       startResendTimer();
+      if (code) autoFillOtp(code);
     } catch (err) {
       setOtpError(err instanceof ApiError ? err.message : "Could not resend the code. Please try again.");
     }
