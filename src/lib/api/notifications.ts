@@ -23,6 +23,20 @@ export function markAllNotificationsRead() {
   return request<{ updated: number }>("/partner/notifications/read-all", { method: "PATCH" });
 }
 
+/**
+ * Confirms this device actually received the push — distinct from marking it
+ * read, which is about the partner's attention rather than delivery. The
+ * backend treats silence as a missed push and escalates to SMS, so this is
+ * what stands the ladder down. Prefer acknowledgeDelivery() in
+ * lib/notifications/deliveryAck.ts, which dedupes and never throws.
+ */
+export function acknowledgeNotificationDelivery(id: string) {
+  return request<{ success: boolean; firstReceipt: boolean }>(
+    `/partner/notifications/${id}/delivered`,
+    { method: "POST" }
+  );
+}
+
 export function registerDeviceToken(body: RegisterDeviceTokenBody) {
   return request<{ id: string }>("/partner/notifications/device-token", {
     method: "POST",
