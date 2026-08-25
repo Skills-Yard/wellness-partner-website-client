@@ -1,11 +1,13 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { ArrowLeft, Loader2, Plus, ChevronDown, ChevronUp } from "lucide-react";
 import DocumentUploadField from "@/components/kyc/DocumentUploadField";
 import { uploadEmployeeKycFile } from "@/lib/api/upload";
 import * as employeesApi from "@/lib/api/employees";
 import { ApiError } from "@/lib/api/client";
+import { usePaginatedList } from "@/hooks/usePaginatedList";
+import { LoadMoreButton } from "@/components/ui/load-more-button";
 import type { PartnerEmployee } from "@/lib/api/types";
 
 function EmployeeKycInline({ employeeId }: { employeeId: string }) {
@@ -126,22 +128,15 @@ function AddEmployeeForm({ onAdded }: { onAdded: () => void }) {
 }
 
 export default function TeamPanel({ onBack }: { onBack: () => void }) {
-  const [employees, setEmployees] = useState<PartnerEmployee[] | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
 
-  const load = async () => {
-    try {
-      setEmployees(await employeesApi.getEmployees());
-    } catch {
-      setEmployees([]);
-    }
-  };
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial fetch-on-mount, not a render-loop hazard
-    load();
-  }, []);
+  const { items: employees, isLoading, isFetchingNextPage, hasMore, loadMore, refetch } =
+    usePaginatedList<PartnerEmployee>(
+      ["partner-employees"],
+      (page, limit) => employeesApi.getEmployeesPage(page, limit),
+      { limit: 20 }
+    );
 
   return (
     <div className="min-h-screen bg-white flex flex-col pb-28 lg:pb-10">
@@ -152,14 +147,14 @@ export default function TeamPanel({ onBack }: { onBack: () => void }) {
         <h1 className="text-lg font-extrabold text-stone-900">Team</h1>
       </div>
 
-      <div className="px-5 max-w-lg w-full mx-auto space-y-3">
-        {employees === null && (
+      <div className="px-5 max-w-lg w-full space-y-3">
+        {isLoading && (
           <div className="flex items-center justify-center py-16">
             <Loader2 className="h-6 w-6 text-stone-400 animate-spin" />
           </div>
         )}
 
-        {employees?.map((emp) => {
+        {employees.map((emp) => {
           const isOpen = expanded === emp.id;
           return (
             <div key={emp.id} className="rounded-2xl border border-stone-100 bg-[#FAF9F6] overflow-hidden">
@@ -188,11 +183,13 @@ export default function TeamPanel({ onBack }: { onBack: () => void }) {
           );
         })}
 
+        {hasMore && <LoadMoreButton onClick={loadMore} loading={isFetchingNextPage} />}
+
         {showAdd ? (
           <AddEmployeeForm
             onAdded={() => {
               setShowAdd(false);
-              load();
+              void refetch();
             }}
           />
         ) : (

@@ -37,6 +37,24 @@ messaging?.onBackgroundMessage((payload) => {
     icon: "/favicon.ico",
     data: payload.data ?? {},
   });
+
+  // Relay the delivery receipt to any open tab, which acks it with the access
+  // token held in page memory. A service worker cannot read localStorage, so
+  // it cannot make an authenticated call itself.
+  //
+  // When no tab is open there is deliberately no ack: the backend then treats
+  // the push as missed and escalates to SMS, which is the correct outcome —
+  // nothing in this browser is in a position to act on the notification.
+  const notificationId = payload.data?.notificationId;
+  if (notificationId) {
+    self.clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((clientsArr) => {
+        clientsArr.forEach((client) =>
+          client.postMessage({ type: "PUSH_DELIVERED", notificationId }),
+        );
+      });
+  }
 });
 
 // There's no per-booking route in this app (a single-page dashboard that

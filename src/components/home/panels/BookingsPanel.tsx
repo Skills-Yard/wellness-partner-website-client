@@ -1,10 +1,16 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { ArrowLeft, ChevronRight, Loader2 } from "lucide-react";
+import React, { useState } from "react";
+import { ArrowLeft, Loader2, Search } from "lucide-react";
 import * as bookingsApi from "@/lib/api/bookings";
 import { ApiError } from "@/lib/api/client";
 import type { Booking, BookingStatus } from "@/lib/api/types";
+import { usePaginatedList } from "@/hooks/usePaginatedList";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { LoadMoreButton } from "@/components/ui/load-more-button";
+import StartServiceModal from "@/components/booking/StartServiceModal";
+import CancelBookingModal from "@/components/booking/CancelBookingModal";
+import DisputeBookingModal from "@/components/booking/DisputeBookingModal";
 
 const STATUS_COLORS: Partial<Record<BookingStatus, string>> = {
   BROADCASTED: "bg-amber-50 text-amber-700",
@@ -25,7 +31,12 @@ const STATUS_COLORS: Partial<Record<BookingStatus, string>> = {
 // TodayActivity's today-matching had to account for.
 function formatScheduledDate(dateStr: string) {
   const d = new Date(dateStr);
-  return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+  return d.toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
 }
 
 /**
@@ -66,7 +77,9 @@ function BookingRow({
     <div
       onClick={isBroadcast ? undefined : () => onOpenTracking(booking.id)}
       className={`flex-1 min-w-65 max-w-sm rounded-2xl border border-stone-100 bg-[#FAF9F6] p-4 ${
-        isBroadcast ? "" : "cursor-pointer hover:bg-stone-100/60 transition-colors"
+        isBroadcast
+          ? ""
+          : "cursor-pointer hover:bg-stone-100/60 transition-colors"
       }`}
     >
       <div className="flex items-center justify-between mb-2">
@@ -85,8 +98,12 @@ function BookingRow({
         {formatScheduledDate(booking.scheduledDate)} · {booking.scheduledTime}
       </p>
       <div className="flex items-center justify-between mt-0.5">
-        <p className="text-[11px] text-stone-400">You earn ₹{booking.partnerEarning.toFixed(0)}</p>
-        {!isBroadcast && <ChevronRight className="h-4 w-4 text-stone-350 shrink-0" />}
+        <p className="text-[11px] text-stone-400">
+          You earn ₹{booking.partnerEarning.toFixed(0)}
+        </p>
+        {!isBroadcast && (
+          <ChevronRight className="h-4 w-4 text-stone-350 shrink-0" />
+        )}
       </div>
 
       {isBroadcast && (
@@ -105,11 +122,17 @@ function BookingRow({
             Accept
           </button>
           <button
-            onClick={() => run("reject", () => bookingsApi.rejectBooking(booking.id, "Not available"))}
+            onClick={() =>
+              run("reject", () =>
+                bookingsApi.rejectBooking(booking.id, "Not available"),
+              )
+            }
             disabled={busy !== null}
             className="flex-1 rounded-xl py-2 text-xs font-bold border border-stone-200 text-stone-500 hover:bg-stone-100 transition-all cursor-pointer disabled:opacity-60"
           >
-            {busy === "reject" && <Loader2 className="h-3 w-3 animate-spin inline mr-1.5" />}
+            {busy === "reject" && (
+              <Loader2 className="h-3 w-3 animate-spin inline mr-1.5" />
+            )}
             Decline
           </button>
         </div>
@@ -118,53 +141,77 @@ function BookingRow({
   );
 }
 
-export default function BookingsPanel({
-  onBack,
-  onOpenTracking,
-}: {
-  onBack: () => void;
-  onOpenTracking: (bookingId: string) => void;
-}) {
-  const [bookings, setBookings] = useState<Booking[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+export default function BookingsPanel({ onBack }: { onBack: () => void }) {
+  const [search, setSearch] = useState("");
+  const q = useDebouncedValue(search);
 
-  const load = async () => {
-    try {
-      const data = await bookingsApi.getBookings();
-      setBookings(data);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Could not load your bookings.");
-      setBookings([]);
-    }
-  };
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial fetch-on-mount, not a render-loop hazard
-    load();
-  }, []);
+  const {
+    items: bookings,
+    isLoading,
+    isFetchingNextPage,
+    hasMore,
+    loadMore,
+    error,
+    refetch,
+  } = usePaginatedList<Booking>(
+    ["partner-bookings", q],
+    (page, limit) =>
+      bookingsApi.getBookingsPage(page, limit, { q: q || undefined }),
+    { limit: 20 },
+  );
 
   return (
     <div className="min-h-screen bg-white flex flex-col pb-28 lg:pb-10">
       <div className="px-5 pt-6 pb-4 flex items-center gap-3">
-        <button onClick={onBack} className="w-10 h-10 border border-stone-200 rounded-2xl flex items-center justify-center bg-white shadow-sm cursor-pointer hover:bg-stone-50">
+        <button
+          onClick={onBack}
+          className="w-10 h-10 border border-stone-200 rounded-2xl flex items-center justify-center bg-white shadow-sm cursor-pointer hover:bg-stone-50"
+        >
           <ArrowLeft className="w-5 h-5 text-stone-700" />
         </button>
         <h1 className="text-lg font-extrabold text-stone-900">Bookings</h1>
       </div>
 
-      <div className="px-5 max-w-5xl w-full mx-auto">
-        {bookings === null && (
+      <div className="px-5 max-w-lg w-full">
+        <div className="relative mb-4">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by customer or partner name"
+            className="w-full rounded-xl border border-stone-200 py-2.5 pl-9 pr-3 text-sm text-stone-800 placeholder:text-stone-400 focus:border-stone-400 focus:outline-none"
+          />
+        </div>
+
+        {isLoading && (
           <div className="flex-1 flex items-center justify-center py-16">
             <Loader2 className="h-6 w-6 text-stone-400 animate-spin" />
           </div>
         )}
-        {bookings?.length === 0 && <p className="text-sm text-stone-400 py-8 text-center">No bookings yet.</p>}
-        {error && <p className="text-xs font-medium text-red-500 mb-3">{error}</p>}
-        <div className="flex flex-wrap gap-4">
-          {bookings?.map((b) => (
-            <BookingRow key={b.id} booking={b} onAction={load} onOpenTracking={onOpenTracking} />
+        {!isLoading && bookings.length === 0 && (
+          <p className="text-sm text-stone-400 py-8 text-center">
+            {q ? "No bookings match your search." : "No bookings yet."}
+          </p>
+        )}
+        {error && (
+          <p className="text-xs font-medium text-red-500 mb-3">
+            {error instanceof ApiError
+              ? error.message
+              : "Could not load your bookings."}
+          </p>
+        )}
+        <div className="space-y-3">
+          {bookings.map((b) => (
+            <BookingCard
+              key={b.id}
+              booking={b}
+              onAction={() => void refetch()}
+            />
           ))}
         </div>
+        {hasMore && (
+          <LoadMoreButton onClick={loadMore} loading={isFetchingNextPage} />
+        )}
       </div>
     </div>
   );

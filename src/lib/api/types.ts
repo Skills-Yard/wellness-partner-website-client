@@ -373,6 +373,14 @@ export interface NotificationItem {
   isSent: boolean;
   sentAt?: string | null;
   createdAt: string;
+  // isSent means "a provider accepted the message"; these mean "a device
+  // actually received it", reported back by this client (see deliveryAck.ts).
+  // Until a receipt lands the backend assumes the push was missed and climbs
+  // its escalation ladder to SMS — see the backend's
+  // shared/constants/notification-delivery.constants.ts.
+  deliveredAt?: string | null;
+  deliveredVia?: NotificationChannel | null;
+  escalationStage?: number;
 }
 
 export type RegisterDeviceTokenBody = {

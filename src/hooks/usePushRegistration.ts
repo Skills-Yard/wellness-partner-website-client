@@ -2,8 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { onForegroundPushMessage } from "@/lib/firebase/messaging";
+import {
+  onForegroundPushMessage,
+  onServiceWorkerDelivery,
+} from "@/lib/firebase/messaging";
 import { syncPushTokenSilently } from "@/lib/notifications/push";
+import { acknowledgeDelivery } from "@/lib/notifications/deliveryAck";
 import { queryKeys } from "./queries/queryKeys";
 import type { IncomingBroadcast } from "@/lib/api/types";
 
@@ -52,6 +56,12 @@ export function usePushRegistration(enabled: boolean) {
     if (enabled) void syncPushTokenSilently();
   }, [enabled]);
 
+  // A push that lands while this tab is open but unfocused goes to the service
+  // worker, which can't authenticate an ack itself — it relays the id here
+  // instead. Not gated on `enabled`: a receipt is worth sending for any
+  // logged-in partner, whatever their approval status.
+  useEffect(() => onServiceWorkerDelivery(acknowledgeDelivery), []);
+
   useEffect(() => {
     if (!enabled) return;
 
@@ -59,6 +69,10 @@ export function usePushRegistration(enabled: boolean) {
     let cancelled = false;
 
     onForegroundPushMessage(async (title, body, data) => {
+      // First thing, before any of the work below: the backend is waiting on
+      // this receipt and starts escalating to SMS within seconds without it.
+      acknowledgeDelivery(data.notificationId);
+
       queryClient.invalidateQueries({ queryKey: queryKeys.notifications() });
       queryClient.invalidateQueries({ queryKey: queryKeys.unreadNotificationCount() });
 

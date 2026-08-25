@@ -1,8 +1,24 @@
-import { request, fetchAllPaginated } from "./client";
-import type { Booking, IncomingBroadcast } from "./types";
+import { request, requestEnvelope, fetchAllPaginated } from "./client";
+import type { Booking, IncomingBroadcast, BookingStatus } from "./types";
 
 export function getBookings() {
   return fetchAllPaginated<Booking>((page, limit) => `/partner/bookings?page=${page}&limit=${limit}`);
+}
+
+// Single-page fetch for usePaginatedList-backed screens (BookingsPanel) —
+// unlike getBookings() above, this does NOT walk every page, and forwards
+// q/status/scheduledDate straight to the backend instead of filtering a
+// fully-fetched array client-side.
+export function getBookingsPage(
+  page: number,
+  limit: number,
+  filters?: { q?: string; status?: BookingStatus; scheduledDate?: string }
+) {
+  const qs = new URLSearchParams({ page: String(page), limit: String(limit) });
+  if (filters?.q) qs.set("q", filters.q);
+  if (filters?.status) qs.set("status", filters.status);
+  if (filters?.scheduledDate) qs.set("scheduledDate", filters.scheduledDate);
+  return requestEnvelope<Booking[]>(`/partner/bookings?${qs.toString()}`);
 }
 
 export function getIncomingBroadcasts() {
