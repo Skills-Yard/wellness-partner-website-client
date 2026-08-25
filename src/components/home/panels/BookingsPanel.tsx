@@ -1,16 +1,13 @@
 "use client";
 
 import React, { useState } from "react";
-import { ArrowLeft, Loader2, Search } from "lucide-react";
+import { ArrowLeft, ChevronRight, Loader2, Search } from "lucide-react";
 import * as bookingsApi from "@/lib/api/bookings";
 import { ApiError } from "@/lib/api/client";
 import type { Booking, BookingStatus } from "@/lib/api/types";
 import { usePaginatedList } from "@/hooks/usePaginatedList";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { LoadMoreButton } from "@/components/ui/load-more-button";
-import StartServiceModal from "@/components/booking/StartServiceModal";
-import CancelBookingModal from "@/components/booking/CancelBookingModal";
-import DisputeBookingModal from "@/components/booking/DisputeBookingModal";
 
 const STATUS_COLORS: Partial<Record<BookingStatus, string>> = {
   BROADCASTED: "bg-amber-50 text-amber-700",
@@ -141,7 +138,13 @@ function BookingRow({
   );
 }
 
-export default function BookingsPanel({ onBack }: { onBack: () => void }) {
+export default function BookingsPanel({
+  onBack,
+  onOpenTracking,
+}: {
+  onBack: () => void;
+  onOpenTracking: (bookingId: string) => void;
+}) {
   const [search, setSearch] = useState("");
   const q = useDebouncedValue(search);
 
@@ -202,10 +205,11 @@ export default function BookingsPanel({ onBack }: { onBack: () => void }) {
         )}
         <div className="space-y-3">
           {bookings.map((b) => (
-            <BookingCard
+            <BookingRow
               key={b.id}
               booking={b}
               onAction={() => void refetch()}
+              onOpenTracking={onOpenTracking}
             />
           ))}
         </div>
