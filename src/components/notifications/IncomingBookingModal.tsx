@@ -89,11 +89,13 @@ function OfferPrompt({
       await refresh();
       onAccepted?.(broadcast.bookingId);
     } catch (err) {
+      // Surface the backend's actual reason instead of assuming — a 409 here
+      // isn't always "another partner won this broadcast"; it's also what a
+      // "one active booking at a time" rule returns, which reads very
+      // differently to the partner.
+      setError(err instanceof ApiError ? err.message : "Could not accept this booking.");
       if (err instanceof ApiError && err.status === 409) {
-        setError("This job was just taken by another partner.");
         setTimeout(refresh, 1500);
-      } else {
-        setError(err instanceof ApiError ? err.message : "Could not accept this booking.");
       }
     } finally {
       setBusy(false);

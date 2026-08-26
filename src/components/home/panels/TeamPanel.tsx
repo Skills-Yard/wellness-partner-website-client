@@ -131,7 +131,7 @@ export default function TeamPanel({ onBack }: { onBack: () => void }) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
 
-  const { items: employees, isLoading, isFetchingNextPage, hasMore, loadMore, refetch } =
+  const { items: employees, total, isLoading, isFetchingNextPage, hasMore, loadMore, refetch } =
     usePaginatedList<PartnerEmployee>(
       ["partner-employees"],
       (page, limit) => employeesApi.getEmployeesPage(page, limit),
@@ -144,7 +144,9 @@ export default function TeamPanel({ onBack }: { onBack: () => void }) {
         <button onClick={onBack} className="w-10 h-10 border border-stone-200 rounded-2xl flex items-center justify-center bg-white shadow-sm cursor-pointer hover:bg-stone-50">
           <ArrowLeft className="w-5 h-5 text-stone-700" />
         </button>
-        <h1 className="text-lg font-extrabold text-stone-900">Team</h1>
+        <h1 className="text-lg font-extrabold text-stone-900">
+          Team{total !== undefined && <span className="ml-1.5 font-semibold text-stone-400">({total})</span>}
+        </h1>
       </div>
 
       <div className="px-5 max-w-lg w-full space-y-3">

@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { ChevronRight, CalendarClock, Briefcase, GraduationCap, Users, Star, TrendingUp, Lock, Landmark, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useIsDesktopViewport } from "@/lib/hooks/useIsDesktopViewport";
+import { useBookingStats } from "@/hooks/queries/useBookings";
 import BottomNav from "./BottomNav";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
@@ -101,6 +102,11 @@ export default function PartnerHomescreen({
   const [checkingApproval, setCheckingApproval] = useState(false);
 
   const isApproved = partner.status === "APPROVED";
+  // partner.totalBookings/completionRate come back 0 from the profile
+  // endpoint regardless of actual history — derived from the real booking
+  // list instead. See useBookingStats for why averageRating/totalReviews
+  // can't get the same treatment.
+  const bookingStats = useBookingStats(isApproved);
 
   // TrainingCenter sets this flag right before the completion that finishes
   // every mandatory course — that same action flips partner.status TRAINING
@@ -237,9 +243,17 @@ export default function PartnerHomescreen({
           {/* Stats — meaningless before approval, so only shown once live */}
           {isApproved && (
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-              <StatCard icon={<Briefcase className="h-5 w-5" />} label="Total bookings" value={partner.totalBookings} />
+              <StatCard
+                icon={<Briefcase className="h-5 w-5" />}
+                label="Total bookings"
+                value={bookingStats.isLoading ? "…" : bookingStats.totalBookings}
+              />
               <StatCard icon={<Star className="h-5 w-5" />} label="Average rating" value={partner.averageRating.toFixed(1)} />
-              <StatCard icon={<TrendingUp className="h-5 w-5" />} label="Completion rate" value={`${Math.round(partner.completionRate)}%`} />
+              <StatCard
+                icon={<TrendingUp className="h-5 w-5" />}
+                label="Completion rate"
+                value={bookingStats.isLoading ? "…" : `${Math.round(bookingStats.completionRate)}%`}
+              />
               <StatCard icon={<CalendarClock className="h-5 w-5" />} label="Reviews" value={partner.totalReviews} />
             </div>
           )}

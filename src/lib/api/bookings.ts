@@ -1,14 +1,10 @@
-import { request, requestEnvelope, fetchAllPaginated } from "./client";
+import { request, requestEnvelope } from "./client";
 import type { Booking, IncomingBroadcast, BookingStatus } from "./types";
 
-export function getBookings() {
-  return fetchAllPaginated<Booking>((page, limit) => `/partner/bookings?page=${page}&limit=${limit}`);
-}
-
-// Single-page fetch for usePaginatedList-backed screens (BookingsPanel) —
-// unlike getBookings() above, this does NOT walk every page, and forwards
-// q/status/scheduledDate straight to the backend instead of filtering a
-// fully-fetched array client-side.
+// Single-page fetch for usePaginatedList-backed screens (BookingsPanel) and
+// useBookingStats (which only needs pagination.total + counts, not the
+// rows) — forwards q/status/scheduledDate straight to the backend instead of
+// walking every page and filtering a fully-fetched array client-side.
 export function getBookingsPage(
   page: number,
   limit: number,

@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { Coffee, Clock3, Loader2, ChevronRight } from "lucide-react";
+import { Coffee, Clock3, Loader2, ChevronRight, AlertTriangle } from "lucide-react";
 import * as bookingsApi from "@/lib/api/bookings";
 import { ApiError } from "@/lib/api/client";
+import { isBookingOverdue } from "@/lib/bookingSchedule";
 import type { Booking, BookingStatus } from "@/lib/api/types";
 
 // A booking counts as "live" once the partner is actively on it — en route,
@@ -60,6 +61,37 @@ function LiveBookingCard({
           Track <ChevronRight className="h-3.5 w-3.5" />
         </span>
       </div>
+    </button>
+  );
+}
+
+// A booking whose scheduled time has already passed while it was still
+// ACCEPTED/CONFIRMED (never started) — surfaced separately rather than
+// silently left in the "upcoming" bucket, where it would otherwise sit
+// forever advertised as something still coming up.
+function MissedBookingsCard({
+  bookings,
+  onOpenBooking,
+}: {
+  bookings: Booking[];
+  onOpenBooking: (bookingId: string) => void;
+}) {
+  return (
+    <button
+      onClick={() => onOpenBooking(bookings[0].id)}
+      className="w-full text-left rounded-2xl border border-red-100 bg-red-50/60 shadow-sm p-4 cursor-pointer hover:shadow-md transition-shadow"
+    >
+      <div className="flex items-center gap-2 mb-1">
+        <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
+        <span className="text-[11px] font-extrabold uppercase tracking-wide text-red-500">
+          {bookings.length === 1 ? "Missed booking" : `${bookings.length} missed bookings`}
+        </span>
+      </div>
+      <p className="text-xs text-stone-600">
+        {bookings.length === 1
+          ? `${serviceName(bookings[0])} at ${bookings[0].scheduledTime} was never started.`
+          : "These bookings' scheduled times passed without being started."}
+      </p>
     </button>
   );
 }
@@ -192,8 +224,9 @@ export default function TodayActivity({ onOpenBooking }: { onOpenBooking: (booki
   // filter above) — no client-side date filtering needed any more.
   const todayBookings = bookings;
   const completedToday = todayBookings.filter((b) => b.status === "COMPLETED");
+  const missedToday = todayBookings.filter((b) => isBookingOverdue(b));
   const upcomingToday = todayBookings
-    .filter((b) => UPCOMING_STATUSES.includes(b.status))
+    .filter((b) => UPCOMING_STATUSES.includes(b.status) && !isBookingOverdue(b))
     .sort((a, b) => a.scheduledTime.localeCompare(b.scheduledTime));
   const earningsToday = completedToday.reduce((sum, b) => sum + b.partnerEarning, 0);
 
@@ -202,6 +235,8 @@ export default function TodayActivity({ onOpenBooking }: { onOpenBooking: (booki
       {error && <p className="text-xs font-medium text-red-500">{error}</p>}
 
       {liveBooking && <LiveBookingCard booking={liveBooking} onOpenBooking={onOpenBooking} />}
+
+      {missedToday.length > 0 && <MissedBookingsCard bookings={missedToday} onOpenBooking={onOpenBooking} />}
 
       <TodayProgressCard
         totalToday={todayBookings.length}

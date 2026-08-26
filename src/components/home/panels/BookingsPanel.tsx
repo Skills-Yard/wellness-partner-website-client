@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { ArrowLeft, ChevronRight, Loader2, Search } from "lucide-react";
 import * as bookingsApi from "@/lib/api/bookings";
 import { ApiError } from "@/lib/api/client";
+import { isBookingOverdue } from "@/lib/bookingSchedule";
 import type { Booking, BookingStatus } from "@/lib/api/types";
 import { usePaginatedList } from "@/hooks/usePaginatedList";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
@@ -69,6 +70,11 @@ function BookingRow({
   };
 
   const isBroadcast = booking.status === "BROADCASTED";
+  // A booking never technically transitions out of ACCEPTED/CONFIRMED on
+  // its own once its slot passes without being started — the backend has no
+  // "missed" status — so this is caught client-side instead of trusting the
+  // raw status to still mean "upcoming".
+  const isMissed = !isBroadcast && isBookingOverdue(booking);
 
   return (
     <div
@@ -85,10 +91,10 @@ function BookingRow({
         </span>
         <span
           className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-            STATUS_COLORS[booking.status] ?? "bg-stone-100 text-stone-600"
+            isMissed ? "bg-red-50 text-red-700" : STATUS_COLORS[booking.status] ?? "bg-stone-100 text-stone-600"
           }`}
         >
-          {booking.status.replace(/_/g, " ")}
+          {isMissed ? "Missed" : booking.status.replace(/_/g, " ")}
         </span>
       </div>
       <p className="text-[11px] text-stone-500">

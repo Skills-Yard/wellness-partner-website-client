@@ -1,6 +1,10 @@
-import { request } from "./client";
+import { request, requestEnvelope } from "./client";
 import type { NotificationItem, RegisterDeviceTokenBody } from "./types";
 
+// Was `request()` (returns bare `.data`) — the backend now returns
+// `{ data, pagination, counts: { unread, read } }` instead of a plain array,
+// so this needs the full envelope (requestEnvelope) to reach `pagination`/
+// `counts` at all. See useNotifications for how callers consume it.
 export function getNotifications(params?: { isRead?: boolean; take?: number; skip?: number }) {
   const query = new URLSearchParams();
   if (params?.isRead !== undefined) query.set("isRead", String(params.isRead));
@@ -8,7 +12,7 @@ export function getNotifications(params?: { isRead?: boolean; take?: number; ski
   if (params?.skip !== undefined) query.set("skip", String(params.skip));
   const qs = query.toString();
 
-  return request<NotificationItem[]>(`/partner/notifications${qs ? `?${qs}` : ""}`);
+  return requestEnvelope<NotificationItem[]>(`/partner/notifications${qs ? `?${qs}` : ""}`);
 }
 
 export function getUnreadNotificationCount() {

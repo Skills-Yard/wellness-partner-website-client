@@ -6,16 +6,29 @@ import { getAccessToken } from "@/lib/api/client";
 import { queryKeys } from "./queryKeys";
 
 /** Recent notifications for the logged-in partner. Disabled entirely for a
- *  logged-out visitor. */
+ *  logged-out visitor.
+ *
+ *  Keeps `data` as the plain notification array (existing callers destructure
+ *  `data: notifications = []` and never touched this shape), but also
+ *  surfaces `pagination`/`counts` from the backend's `{ data, pagination,
+ *  counts: { unread, read } }` envelope now that getNotifications() returns
+ *  the full thing instead of just `.data`. */
 export function useNotifications(take = 20) {
   const accessToken = typeof window !== "undefined" ? getAccessToken() : null;
 
-  return useQuery({
+  const query = useQuery({
     queryKey: queryKeys.notifications(),
     queryFn: () => notificationsApi.getNotifications({ take }),
     enabled: !!accessToken,
     staleTime: 30 * 1000,
   });
+
+  return {
+    ...query,
+    data: query.data?.data ?? [],
+    pagination: query.data?.pagination,
+    counts: query.data?.counts,
+  };
 }
 
 /** Drives the bell's unread badge. Polls on a slow interval so the badge

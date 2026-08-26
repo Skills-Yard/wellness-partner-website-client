@@ -347,6 +347,13 @@ export interface Partner {
   availability?: PartnerAvailability[];
   employees?: PartnerEmployee[];
   trainingProgress?: PartnerTrainingProgress[];
+  // Live counts from the backend (PartnerRepository.findById) — employees
+  // mirrors the length of the `employees` array above (which is unbounded,
+  // not enforced-small), plus bookings/reviews which aren't otherwise
+  // embedded here at all. Prefer these over `totalBookings`/`totalReviews`
+  // below where accuracy matters — see useBookingStats's doc comment for why
+  // totalBookings/completionRate specifically come back stale/zero.
+  _count?: { employees: number; bookings: number; reviews: number };
 }
 
 // Backend NotificationType enum (prisma/schema/enums.prisma) — kept as a
@@ -445,6 +452,11 @@ export interface ApiSuccessEnvelope<T> {
   data: T;
   meta: { timestamp: string; correlationId: string; path: string };
   pagination?: { total: number; page: number; limit: number; totalPages: number };
+  /** Aggregate counts alongside a paginated list, independent of the
+   *  current page/filter — e.g. `{ upcoming: 3, past: 12 }` for bookings,
+   *  or `{ unread: 2, read: 40 }` for notifications — so tabs/badges don't
+   *  need a second request. See the backend's `paginateWithCounts()`. */
+  counts?: Record<string, number>;
 }
 
 export interface ApiErrorEnvelope {
