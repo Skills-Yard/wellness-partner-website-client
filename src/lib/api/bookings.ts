@@ -1,5 +1,11 @@
-import { request, requestEnvelope } from "./client";
+import { fetchAllPaginated, request, requestEnvelope } from "./client";
 import type { Booking, IncomingBroadcast, BookingStatus } from "./types";
+
+export function getBookings() {
+  return fetchAllPaginated<Booking>(
+    (page, limit) => `/partner/bookings?page=${page}&limit=${limit}`,
+  );
+}
 
 // Single-page fetch for usePaginatedList-backed screens (BookingsPanel) and
 // useBookingStats (which only needs pagination.total + counts, not the
@@ -8,7 +14,7 @@ import type { Booking, IncomingBroadcast, BookingStatus } from "./types";
 export function getBookingsPage(
   page: number,
   limit: number,
-  filters?: { q?: string; status?: BookingStatus; scheduledDate?: string }
+  filters?: { q?: string; status?: BookingStatus; scheduledDate?: string },
 ) {
   const qs = new URLSearchParams({ page: String(page), limit: String(limit) });
   if (filters?.q) qs.set("q", filters.q);
@@ -26,7 +32,9 @@ export function getBooking(bookingId: string) {
 }
 
 export function acceptBooking(bookingId: string) {
-  return request<Booking>(`/partner/bookings/${bookingId}/accept`, { method: "POST" });
+  return request<Booking>(`/partner/bookings/${bookingId}/accept`, {
+    method: "POST",
+  });
 }
 
 export function rejectBooking(bookingId: string, reason: string) {
@@ -37,11 +45,15 @@ export function rejectBooking(bookingId: string, reason: string) {
 }
 
 export function markEnRoute(bookingId: string) {
-  return request<Booking>(`/partner/bookings/${bookingId}/en-route`, { method: "POST" });
+  return request<Booking>(`/partner/bookings/${bookingId}/en-route`, {
+    method: "POST",
+  });
 }
 
 export function markArrived(bookingId: string) {
-  return request<Booking>(`/partner/bookings/${bookingId}/arrived`, { method: "POST" });
+  return request<Booking>(`/partner/bookings/${bookingId}/arrived`, {
+    method: "POST",
+  });
 }
 
 export function startBooking(bookingId: string, otp: string) {
@@ -52,7 +64,9 @@ export function startBooking(bookingId: string, otp: string) {
 }
 
 export function completeBooking(bookingId: string) {
-  return request<Booking>(`/partner/bookings/${bookingId}/complete`, { method: "POST" });
+  return request<Booking>(`/partner/bookings/${bookingId}/complete`, {
+    method: "POST",
+  });
 }
 
 export function cancelBooking(bookingId: string, reason: string) {
