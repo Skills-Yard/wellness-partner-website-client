@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
@@ -136,6 +137,7 @@
   --animate-fade-in-up: fade-in-up 0.35s ease-out both;
   --animate-expand: expand 0.25s ease-out both;
   --animate-confetti: confetti-fall 1.1s ease-in both;
+  --animate-bell-bounce: bell-bounce 0.45s ease-out;
 }
 
 @keyframes shimmer {
@@ -166,6 +168,30 @@
   to {
     opacity: 1;
     transform: scaleY(1);
+  }
+}
+
+/* Notification-bell click feedback (PartnerStatusHeader/Sidebar) — a pure
+   scale pop, no rotation, so it stays "subtle" rather than a cartoonish
+   ring/wiggle. Re-triggered by remounting the icon on a changing `key`
+   (see those components) rather than toggling a class, so a rapid second
+   click always restarts the animation cleanly instead of no-op'ing because
+   the class was already applied. */
+@keyframes bell-bounce {
+  0% {
+    transform: scale(1);
+  }
+  30% {
+    transform: scale(1.22);
+  }
+  55% {
+    transform: scale(0.92);
+  }
+  75% {
+    transform: scale(1.06);
+  }
+  100% {
+    transform: scale(1);
   }
 }
 

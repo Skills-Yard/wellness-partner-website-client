@@ -12,13 +12,22 @@ import { queryKeys } from "./queryKeys";
  *  `data: notifications = []` and never touched this shape), but also
  *  surfaces `pagination`/`counts` from the backend's `{ data, pagination,
  *  counts: { unread, read } }` envelope now that getNotifications() returns
- *  the full thing instead of just `.data`. */
-export function useNotifications(take = 20) {
+ *  the full thing instead of just `.data`.
+ *
+ *  `isRead` is forwarded straight to the backend filter (NotificationsSidebar's
+ *  All/Unread tabs) — appended as its own query-key segment so each filter
+ *  gets its own cache entry, but `queryKeys.notifications()` itself stays
+ *  bare so every existing `invalidateQueries({ queryKey: queryKeys.notifications() })`
+ *  call still busts every filter's cache at once (React Query prefix-matches
+ *  by default). `counts` in the response is the same aggregate regardless of
+ *  `isRead` (see the backend's paginateWithCounts()), so callers can read
+ *  both tab totals off of whichever filter happens to be active. */
+export function useNotifications(take = 20, isRead?: boolean) {
   const accessToken = typeof window !== "undefined" ? getAccessToken() : null;
 
   const query = useQuery({
-    queryKey: queryKeys.notifications(),
-    queryFn: () => notificationsApi.getNotifications({ take }),
+    queryKey: [...queryKeys.notifications(), { take, isRead }],
+    queryFn: () => notificationsApi.getNotifications({ take, isRead }),
     enabled: !!accessToken,
     staleTime: 30 * 1000,
   });

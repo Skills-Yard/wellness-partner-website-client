@@ -9,4 +9,8 @@ export const queryKeys = {
   unreadNotificationCount: () => ["notifications", "unread-count"] as const,
   incomingBroadcasts: () => ["bookings", "incoming"] as const,
   bookings: () => ["bookings", "all"] as const,
+  // Home dashboard: the next confirmed/accepted jobs, and the recent
+  // completed history the weekly earnings chart is derived from.
+  upcomingBookings: () => ["bookings", "upcoming"] as const,
+  completedBookings: () => ["bookings", "completed"] as const,
 };
