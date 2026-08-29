@@ -56,14 +56,27 @@ function BookingRow({
   onOpenTracking: (bookingId: string) => void;
 }) {
   const [busy, setBusy] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const run = async (key: string, fn: () => Promise<unknown>) => {
     setBusy(key);
+    setActionError(null);
     try {
       await fn();
       onAction();
-    } catch {
-      // best-effort — user can retry
+    } catch (err) {
+      // A 409 here almost always means someone else got there first — either
+      // another partner already accepted this broadcast, or the backend's
+      // "one active booking at a time" rule kicked in (same ambiguity
+      // IncomingBookingModal's popup handles) — surface that instead of
+      // failing silently, so the partner isn't left tapping a dead button.
+      setActionError(
+        err instanceof ApiError
+          ? err.status === 409
+            ? "No longer available — it may have been taken by another partner."
+            : err.message
+          : "That didn't go through — please try again."
+      );
     } finally {
       setBusy(null);
     }
@@ -110,34 +123,39 @@ function BookingRow({
       </div>
 
       {isBroadcast && (
-        <div className="flex gap-2 mt-3" onClick={(e) => e.stopPropagation()}>
-          <button
-            onClick={() =>
-              run("accept", async () => {
-                await bookingsApi.acceptBooking(booking.id);
-                onOpenTracking(booking.id);
-              })
-            }
-            disabled={busy !== null}
-            className="flex-1 rounded-xl py-2 text-xs font-bold bg-stone-900 text-white hover:bg-stone-800 transition-all active:scale-[0.98] cursor-pointer disabled:opacity-60 flex items-center justify-center gap-1.5"
-          >
-            {busy === "accept" && <Loader2 className="h-3 w-3 animate-spin" />}
-            Accept
-          </button>
-          <button
-            onClick={() =>
-              run("reject", () =>
-                bookingsApi.rejectBooking(booking.id, "Not available"),
-              )
-            }
-            disabled={busy !== null}
-            className="flex-1 rounded-xl py-2 text-xs font-bold border border-stone-200 text-stone-500 hover:bg-stone-100 transition-all cursor-pointer disabled:opacity-60"
-          >
-            {busy === "reject" && (
-              <Loader2 className="h-3 w-3 animate-spin inline mr-1.5" />
-            )}
-            Decline
-          </button>
+        <div className="mt-3" onClick={(e) => e.stopPropagation()}>
+          {actionError && (
+            <p className="text-[11px] font-medium text-red-500 mb-2">{actionError}</p>
+          )}
+          <div className="flex gap-2">
+            <button
+              onClick={() =>
+                run("accept", async () => {
+                  await bookingsApi.acceptBooking(booking.id);
+                  onOpenTracking(booking.id);
+                })
+              }
+              disabled={busy !== null}
+              className="flex-1 rounded-xl py-2 text-xs font-bold bg-stone-900 text-white hover:bg-stone-800 transition-all active:scale-[0.98] cursor-pointer disabled:opacity-60 flex items-center justify-center gap-1.5"
+            >
+              {busy === "accept" && <Loader2 className="h-3 w-3 animate-spin" />}
+              Accept
+            </button>
+            <button
+              onClick={() =>
+                run("reject", () =>
+                  bookingsApi.rejectBooking(booking.id, "Not available"),
+                )
+              }
+              disabled={busy !== null}
+              className="flex-1 rounded-xl py-2 text-xs font-bold border border-stone-200 text-stone-500 hover:bg-stone-100 transition-all cursor-pointer disabled:opacity-60"
+            >
+              {busy === "reject" && (
+                <Loader2 className="h-3 w-3 animate-spin inline mr-1.5" />
+              )}
+              Decline
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -181,8 +199,8 @@ export default function BookingsPanel({
         <h1 className="text-lg font-extrabold text-stone-900">Bookings</h1>
       </div>
 
-      <div className="px-5 max-w-lg w-full">
-        <div className="relative mb-4">
+      <div className="px-5 sm:px-8 max-w-4xl w-full mx-auto">
+        <div className="relative mb-4 max-w-lg">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
           <input
             value={search}
@@ -209,7 +227,7 @@ export default function BookingsPanel({
               : "Could not load your bookings."}
           </p>
         )}
-        <div className="space-y-3">
+        <div className="flex flex-row flex-wrap gap-3">
           {bookings.map((b) => (
             <BookingRow
               key={b.id}

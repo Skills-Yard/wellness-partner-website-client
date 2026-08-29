@@ -8,8 +8,8 @@ export interface PaginatedListPage<T> {
 }
 
 /**
- * Generalizes NotificationsPanel's "Load more" pattern (see
- * useNotifications.ts + NotificationsPanel.tsx) into a reusable hook, built
+ * Generalizes NotificationsSidebar's "Load more" pattern (see
+ * useNotifications.ts + NotificationsSidebar.tsx) into a reusable hook, built
  * on react-query's useInfiniteQuery so page accumulation/caching/race
  * conditions are handled by the library instead of hand-rolled state.
  * Unlike notifications (whose endpoint has no real total, so that screen

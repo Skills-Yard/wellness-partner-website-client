@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   Calendar,
+  CalendarX,
   CheckCircle2,
   Clock,
   ExternalLink,
@@ -11,11 +12,13 @@ import {
   Loader2,
   MapPin,
   StickyNote,
+  UserX,
   XCircle,
   AlertTriangle,
 } from "lucide-react";
 import * as bookingsApi from "@/lib/api/bookings";
 import { ApiError } from "@/lib/api/client";
+import { isBookingOverdue } from "@/lib/bookingSchedule";
 import type { Booking, BookingStatus } from "@/lib/api/types";
 import StartServiceModal from "@/components/booking/StartServiceModal";
 import CancelBookingModal from "@/components/booking/CancelBookingModal";
@@ -106,36 +109,101 @@ function StatusTimeline({ status }: { status: BookingStatus }) {
   );
 }
 
-function StatusBanner({ status }: { status: BookingStatus }) {
+// Content for every status (or overdue state) that leaves nothing for the
+// partner to do here — StatusBanner below just picks one and renders it.
+// Falls back to a generic label for anything not called out explicitly.
+function bannerContent(status: BookingStatus, isMissed: boolean) {
+  if (isMissed) {
+    return {
+      icon: <CalendarX className="h-4.5 w-4.5" />,
+      iconWrap: "bg-white text-red-600",
+      border: "border-red-100",
+      bg: "bg-red-50",
+      title: "Expired",
+      subtitle: "Its scheduled time has passed — you no longer have access to act on it.",
+      titleColor: "text-red-800",
+      subtitleColor: "text-red-700",
+    };
+  }
   if (CANCELLED_STATUSES.includes(status)) {
-    return (
-      <div className="flex items-center gap-3 rounded-2xl border border-stone-200 bg-stone-50 p-4">
-        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-stone-100 text-stone-500 shrink-0">
-          <XCircle className="h-4.5 w-4.5" />
-        </span>
-        <div>
-          <p className="text-sm font-bold text-stone-700">Booking cancelled</p>
-          <p className="text-xs text-stone-450 mt-0.5">There&apos;s nothing left to do here.</p>
-        </div>
-      </div>
-    );
+    return {
+      icon: <XCircle className="h-4.5 w-4.5" />,
+      iconWrap: "bg-stone-100 text-stone-500",
+      border: "border-stone-200",
+      bg: "bg-stone-50",
+      title: "Booking cancelled",
+      subtitle: "There's nothing left to do here.",
+      titleColor: "text-stone-700",
+      subtitleColor: "text-stone-450",
+    };
   }
   if (status === "DISPUTED") {
-    return (
-      <div className="flex items-center gap-3 rounded-2xl border border-amber-100 bg-amber-50 p-4">
-        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-amber-600 shrink-0">
-          <AlertTriangle className="h-4.5 w-4.5" />
-        </span>
-        <div>
-          <p className="text-sm font-bold text-amber-800">Under review</p>
-          <p className="text-xs text-amber-700 mt-0.5">Our team is looking into this booking.</p>
-        </div>
-      </div>
-    );
+    return {
+      icon: <AlertTriangle className="h-4.5 w-4.5" />,
+      iconWrap: "bg-white text-amber-600",
+      border: "border-amber-100",
+      bg: "bg-amber-50",
+      title: "Under review",
+      subtitle: "Our team is looking into this booking.",
+      titleColor: "text-amber-800",
+      subtitleColor: "text-amber-700",
+    };
   }
+  if (status === "NO_PARTNER_FOUND" || status === "EXPIRED") {
+    return {
+      icon: <UserX className="h-4.5 w-4.5" />,
+      iconWrap: "bg-white text-red-600",
+      border: "border-red-100",
+      bg: "bg-red-50",
+      title: "No longer available",
+      subtitle:
+        status === "NO_PARTNER_FOUND"
+          ? "This booking may have already gone to another partner."
+          : "This booking expired before it was confirmed.",
+      titleColor: "text-red-800",
+      subtitleColor: "text-red-700",
+    };
+  }
+  if (status === "PENDING_RESCHEDULE" || status === "RESCHEDULED") {
+    return {
+      icon: <Calendar className="h-4.5 w-4.5" />,
+      iconWrap: "bg-white text-amber-600",
+      border: "border-amber-100",
+      bg: "bg-amber-50",
+      title: status === "PENDING_RESCHEDULE" ? "Reschedule requested" : "Rescheduled",
+      subtitle:
+        status === "PENDING_RESCHEDULE"
+          ? "The client has asked to change the time — nothing to do until it's confirmed."
+          : "This slot moved — check your bookings list for the new time.",
+      titleColor: "text-amber-800",
+      subtitleColor: "text-amber-700",
+    };
+  }
+  return {
+    icon: null,
+    iconWrap: "",
+    border: "border-stone-200",
+    bg: "bg-stone-50",
+    title: status.replace(/_/g, " "),
+    subtitle: null,
+    titleColor: "text-stone-700",
+    subtitleColor: "text-stone-450",
+  };
+}
+
+function StatusBanner({ status, isMissed = false }: { status: BookingStatus; isMissed?: boolean }) {
+  const c = bannerContent(status, isMissed);
   return (
-    <div className="rounded-2xl border border-stone-200 bg-stone-50 p-4">
-      <p className="text-sm font-bold text-stone-700">{status.replace(/_/g, " ")}</p>
+    <div className={`flex items-center gap-3 rounded-2xl border ${c.border} ${c.bg} p-4`}>
+      {c.icon && (
+        <span className={`flex h-9 w-9 items-center justify-center rounded-full shrink-0 ${c.iconWrap}`}>
+          {c.icon}
+        </span>
+      )}
+      <div>
+        <p className={`text-sm font-bold ${c.titleColor}`}>{c.title}</p>
+        {c.subtitle && <p className={`text-xs mt-0.5 ${c.subtitleColor}`}>{c.subtitle}</p>}
+      </div>
     </div>
   );
 }
@@ -247,9 +315,15 @@ export default function BookingTrackingPage({
       : null;
   const addressLine = [booking.address?.city, booking.address?.pincode].filter(Boolean).join(" · ");
 
-  const isCancellable = CANCELLABLE_STATUSES.includes(booking.status);
-  const isDisputable = DISPUTABLE_STATUSES.includes(booking.status);
-  const onHappyPath = stepIndexFor(booking.status) !== -1;
+  // Mirrors BookingsPanel's own "Missed" tag — the backend never
+  // auto-transitions a booking out of a pre-start status once its slot
+  // passes, so this has to be caught here too rather than trusting the raw
+  // status to still mean "actionable". Once missed, nothing below (timeline,
+  // primary action, cancel/dispute) should still offer to act on it.
+  const isMissed = isBookingOverdue(booking);
+  const isCancellable = !isMissed && CANCELLABLE_STATUSES.includes(booking.status);
+  const isDisputable = !isMissed && DISPUTABLE_STATUSES.includes(booking.status);
+  const onHappyPath = !isMissed && stepIndexFor(booking.status) !== -1;
 
   return (
     <div className="min-h-screen bg-white flex flex-col pb-28 lg:pb-10">
@@ -263,7 +337,7 @@ export default function BookingTrackingPage({
             <StatusTimeline status={booking.status} />
           </div>
         ) : (
-          <StatusBanner status={booking.status} />
+          <StatusBanner status={booking.status} isMissed={isMissed} />
         )}
 
         <div className="rounded-2xl border border-stone-100 bg-[#FAF9F6] p-4 space-y-3">
@@ -312,8 +386,10 @@ export default function BookingTrackingPage({
           </div>
         )}
 
-        {/* Primary action — the one step this booking is actually waiting on. */}
-        {booking.status === "ACCEPTED" || booking.status === "CONFIRMED" ? (
+        {/* Primary action — the one step this booking is actually waiting on.
+            Suppressed once the slot's passed (isMissed) — see StatusBanner
+            above, which already tells the partner why there's nothing here. */}
+        {isMissed ? null : booking.status === "ACCEPTED" || booking.status === "CONFIRMED" ? (
           <button
             onClick={() => runAction("en-route", () => bookingsApi.markEnRoute(booking.id))}
             disabled={busyAction !== null}

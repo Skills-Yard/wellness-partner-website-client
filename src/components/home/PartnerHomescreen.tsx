@@ -1,15 +1,18 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { ChevronRight, CalendarClock, Briefcase, GraduationCap, Users, Star, TrendingUp, Lock, Landmark, Loader2 } from "lucide-react";
+import { ChevronRight, CalendarClock, Briefcase, GraduationCap, Users, Star, TrendingUp, Lock, Landmark, Loader2, Wallet } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useIsDesktopViewport } from "@/lib/hooks/useIsDesktopViewport";
-import { useBookingStats } from "@/hooks/queries/useBookings";
+import { useBookingStats, useCompletedBookings } from "@/hooks/queries/useBookings";
+import { bucketWeeklyEarnings, formatINR } from "@/lib/earnings";
 import BottomNav from "./BottomNav";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 import PartnerStatusHeader from "./PartnerStatusHeader";
 import TodayActivity from "./TodayActivity";
+import UpcomingBookingsCard from "./UpcomingBookingsCard";
+import EarningsOverviewCard from "./EarningsOverviewCard";
 import ProfilePage from "./ProfilePage";
 import DesktopProfilePage from "./DesktopProfilePage";
 import MoneyPage from "./MoneyPage";
@@ -20,7 +23,7 @@ import AvailabilityPanel from "./panels/AvailabilityPanel";
 import TeamPanel from "./panels/TeamPanel";
 import BankAccountPanel from "./panels/BankAccountPanel";
 import BookingTrackingPage from "./panels/BookingTrackingPage";
-import NotificationsPanel from "../notifications/NotificationsPanel";
+import NotificationsSidebar from "../notifications/NotificationsSidebar";
 import type { Partner } from "@/lib/api/types";
 
 interface PartnerHomescreenProps {
@@ -36,17 +39,31 @@ interface PartnerHomescreenProps {
   onPendingBookingConsumed?: () => void;
 }
 
-type SubView = "bookings" | "availability" | "team" | "bank" | "training" | "notifications" | "tracking" | null;
+// "notifications" isn't a SubView anymore — it's an overlay drawer
+// (NotificationsSidebar) that sits on top of whatever's already open, not a
+// destination that replaces `content`. See notificationsOpen below.
+type SubView = "bookings" | "availability" | "team" | "bank" | "training" | "tracking" | null;
 
-function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string | number }) {
+function StatCard({
+  icon,
+  label,
+  value,
+  sub,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string | number;
+  sub?: string;
+}) {
   return (
-    <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-4 flex items-center gap-3">
-      <div className="w-10 h-10 rounded-full bg-[#FDF3E7] flex items-center justify-center shrink-0 text-[#C9851A]">
+    <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-4 flex flex-col gap-3">
+      <div className="w-10 h-10 rounded-xl bg-[#FDF3E7] flex items-center justify-center shrink-0 text-[#C9851A]">
         {icon}
       </div>
       <div className="min-w-0">
-        <p className="text-lg font-extrabold text-stone-900 leading-none">{value}</p>
-        <p className="text-[11px] text-stone-450 mt-1">{label}</p>
+        <p className="text-[11px] font-medium text-stone-450">{label}</p>
+        <p className="text-xl font-extrabold text-stone-900 leading-tight mt-0.5">{value}</p>
+        {sub && <p className="text-[10px] text-stone-400 mt-1 truncate">{sub}</p>}
       </div>
     </div>
   );
@@ -55,11 +72,13 @@ function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string
 function ManageCard({
   icon,
   title,
+  description,
   onClick,
   locked,
 }: {
   icon: React.ReactNode;
   title: string;
+  description: string;
   onClick: () => void;
   locked?: boolean;
 }) {
@@ -67,7 +86,7 @@ function ManageCard({
     <button
       onClick={locked ? undefined : onClick}
       aria-disabled={locked}
-      className={`flex items-center gap-4 bg-white rounded-2xl border border-stone-100 shadow-sm p-4 text-left w-full transition-shadow ${
+      className={`flex items-start gap-3.5 bg-white rounded-2xl border border-stone-100 shadow-sm p-4 text-left w-full transition-shadow ${
         locked ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:shadow-md"
       }`}
     >
@@ -76,12 +95,14 @@ function ManageCard({
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-stone-850">{title}</p>
-        {locked && <p className="text-[11px] text-stone-400 mt-0.5">Unlocks once approved</p>}
+        <p className="text-[11px] text-stone-400 mt-0.5 leading-snug">
+          {locked ? "Unlocks once approved" : description}
+        </p>
       </div>
       {locked ? (
-        <Lock className="h-4 w-4 text-stone-350 shrink-0" />
+        <Lock className="h-4 w-4 text-stone-350 shrink-0 mt-0.5" />
       ) : (
-        <ChevronRight className="h-5 w-5 text-stone-450 shrink-0" />
+        <ChevronRight className="h-5 w-5 text-stone-450 shrink-0 mt-0.5" />
       )}
     </button>
   );
@@ -97,6 +118,7 @@ export default function PartnerHomescreen({
   const isDesktop = useIsDesktopViewport();
   const [activeTab, setActiveTab] = useState<"home" | "money" | "profile">("home");
   const [subView, setSubView] = useState<SubView>(null);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [trackingBookingId, setTrackingBookingId] = useState<string | null>(null);
   const [showTrainingCelebration, setShowTrainingCelebration] = useState(false);
   const [checkingApproval, setCheckingApproval] = useState(false);
@@ -107,6 +129,11 @@ export default function PartnerHomescreen({
   // list instead. See useBookingStats for why averageRating/totalReviews
   // can't get the same treatment.
   const bookingStats = useBookingStats(isApproved);
+  // No earnings endpoint exists — the weekly total shown on the stat card is
+  // derived from the same page of completed bookings the Earnings overview
+  // chart uses (shared react-query cache, so this doesn't double-fetch).
+  const completedBookings = useCompletedBookings(isApproved);
+  const earningsThisWeek = bucketWeeklyEarnings(completedBookings.bookings, 0);
 
   // TrainingCenter sets this flag right before the completion that finishes
   // every mandatory course — that same action flips partner.status TRAINING
@@ -141,11 +168,14 @@ export default function PartnerHomescreen({
   // already done by the time this component renders at all, so rewatching
   // it is never gated.
   const openSubView = (view: Exclude<SubView, null>) => {
-    // Notifications matter before approval too (KYC/training/approval
-    // updates all arrive as pushes), so — like training — it's never gated.
-    if (view !== "training" && view !== "notifications" && !isApproved) return;
+    if (view !== "training" && !isApproved) return;
     setSubView(view);
   };
+
+  // Notifications matter before approval too (KYC/training/approval updates
+  // all arrive as pushes), so — like training — it's never gated. Not routed
+  // through openSubView since the drawer isn't a subView (see SubView above).
+  const openNotifications = () => setNotificationsOpen(true);
 
   // Switching top-level tabs always leaves any drill-down subview behind.
   const goToTab = (tab: "home" | "money" | "profile") => {
@@ -182,13 +212,6 @@ export default function PartnerHomescreen({
     content = <BankAccountPanel onBack={() => setSubView(null)} />;
   } else if (subView === "training") {
     content = <TrainingCenter partner={partner} onBack={() => setSubView(null)} />;
-  } else if (subView === "notifications") {
-    content = (
-      <NotificationsPanel
-        onBack={() => setSubView(null)}
-        onOpenBooking={() => openSubView("bookings")}
-      />
-    );
   } else if (activeTab === "profile") {
     // Desktop gets the full tabbed profile (personal info/banking/location,
     // completion tracker) — mobile keeps this exact ProfilePage untouched.
@@ -203,17 +226,14 @@ export default function PartnerHomescreen({
   } else if (activeTab === "money") {
     content = <MoneyPage />;
   } else {
+    const homeSubtitle = isApproved
+      ? "Here's what's happening with your business today."
+      : "Finish the steps below to get approved and start taking bookings.";
     content = (
       <div className="flex flex-col pb-28 lg:pb-10">
-        <PartnerStatusHeader partner={partner} onOpenNotifications={() => openSubView("notifications")} />
+        <PartnerStatusHeader partner={partner} subtitle={homeSubtitle} onOpenNotifications={openNotifications} />
 
-        <div className="flex-1 w-full max-w-4xl mx-auto px-4 sm:px-8 py-6 flex flex-col gap-6">
-          <p className="text-sm text-stone-500 -mt-2">
-            {isApproved
-              ? `You're live in ${partner.city ?? "your area"} as an approved Eezit partner.`
-              : "Finish the steps below to get approved and start taking bookings."}
-          </p>
-
+        <div className="flex-1 w-full max-w-[1600px] mx-auto px-4 sm:px-8 lg:px-10 py-6 flex flex-col gap-6">
           {/* Today's progress + live booking mini-tracker — only meaningful once bookings can actually flow in */}
           {isApproved && <TodayActivity onOpenBooking={openTracking} />}
 
@@ -247,30 +267,103 @@ export default function PartnerHomescreen({
                 icon={<Briefcase className="h-5 w-5" />}
                 label="Total bookings"
                 value={bookingStats.isLoading ? "…" : bookingStats.totalBookings}
+                sub="all time"
               />
-              <StatCard icon={<Star className="h-5 w-5" />} label="Average rating" value={partner.averageRating.toFixed(1)} />
+              <StatCard
+                icon={<Star className="h-5 w-5" />}
+                label="Average rating"
+                value={partner.averageRating.toFixed(1)}
+                sub={
+                  partner.totalReviews > 0
+                    ? `from ${partner.totalReviews} review${partner.totalReviews === 1 ? "" : "s"}`
+                    : "no reviews yet"
+                }
+              />
               <StatCard
                 icon={<TrendingUp className="h-5 w-5" />}
                 label="Completion rate"
                 value={bookingStats.isLoading ? "…" : `${Math.round(bookingStats.completionRate)}%`}
               />
-              <StatCard icon={<CalendarClock className="h-5 w-5" />} label="Reviews" value={partner.totalReviews} />
+              <StatCard
+                icon={<Wallet className="h-5 w-5" />}
+                label="Earnings this week"
+                value={completedBookings.isLoading ? "…" : formatINR(earningsThisWeek.total)}
+                sub={
+                  completedBookings.isLoading
+                    ? undefined
+                    : `${earningsThisWeek.jobCount} job${earningsThisWeek.jobCount === 1 ? "" : "s"} completed`
+                }
+              />
             </div>
           )}
 
           {/* Manage — also reachable from the sidebar on desktop; kept here too so mobile (no sidebar) always has a way in */}
           <div>
             <h3 className="text-base sm:text-lg font-extrabold text-stone-900 mb-3">Manage your work</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <ManageCard icon={<Briefcase className="h-5 w-5" />} title="Bookings" onClick={() => openSubView("bookings")} locked={!isApproved} />
-              <ManageCard icon={<CalendarClock className="h-5 w-5" />} title="Availability & slots" onClick={() => openSubView("availability")} locked={!isApproved} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+              <ManageCard
+                icon={<Briefcase className="h-5 w-5" />}
+                title="Bookings"
+                description="View and manage all your bookings"
+                onClick={() => openSubView("bookings")}
+                locked={!isApproved}
+              />
+              <ManageCard
+                icon={<CalendarClock className="h-5 w-5" />}
+                title="Availability & slots"
+                description="Set your availability and working hours"
+                onClick={() => openSubView("availability")}
+                locked={!isApproved}
+              />
               {partner.type === "BUSINESS" && (
-                <ManageCard icon={<Users className="h-5 w-5" />} title="Team" onClick={() => openSubView("team")} locked={!isApproved} />
+                <ManageCard
+                  icon={<Users className="h-5 w-5" />}
+                  title="Team"
+                  description="Manage your team members and their slots"
+                  onClick={() => openSubView("team")}
+                  locked={!isApproved}
+                />
               )}
-              <ManageCard icon={<Landmark className="h-5 w-5" />} title="Bank account" onClick={() => openSubView("bank")} locked={!isApproved} />
-              <ManageCard icon={<GraduationCap className="h-5 w-5" />} title="Training" onClick={() => openSubView("training")} />
+              <ManageCard
+                icon={<Landmark className="h-5 w-5" />}
+                title="Bank account"
+                description="Manage your payout and bank details"
+                onClick={() => openSubView("bank")}
+                locked={!isApproved}
+              />
+              <ManageCard
+                icon={<Wallet className="h-5 w-5" />}
+                title="Money"
+                description="Track earnings, payouts and transfers"
+                onClick={() => goToTab("money")}
+              />
+              <ManageCard
+                icon={<GraduationCap className="h-5 w-5" />}
+                title="Training"
+                description="Learn and grow with Eezit Partner"
+                onClick={() => openSubView("training")}
+              />
             </div>
           </div>
+
+          {/* Live snapshot — the partner's next jobs and this week's earnings
+              trend, both driven off real booking data (see the two cards'
+              own hooks). Approved-only: nothing to show before bookings can
+              flow in. */}
+          {isApproved && (
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+              <div className="lg:col-span-3">
+                <UpcomingBookingsCard
+                  enabled={isApproved}
+                  onViewAll={() => openSubView("bookings")}
+                  onOpenBooking={openTracking}
+                />
+              </div>
+              <div className="lg:col-span-2">
+                <EarningsOverviewCard enabled={isApproved} />
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -282,15 +375,23 @@ export default function PartnerHomescreen({
         partner={partner}
         activeView={subView ?? activeTab}
         isApproved={isApproved}
+        notificationsOpen={notificationsOpen}
         onNavigateTab={goToTab}
         onOpenSubView={openSubView}
+        onOpenNotifications={openNotifications}
         onLogout={onLogout}
       />
       <div className="flex-1 min-w-0 flex flex-col">
-        <Topbar partner={partner} onNavigateTab={goToTab} />
+        <Topbar partner={partner} onNavigateTab={goToTab} onOpenNotifications={openNotifications} onLogout={onLogout} />
         <div className="flex-1 min-w-0">{content}</div>
       </div>
       {subView === null && <BottomNav active={activeTab} onNavigate={goToTab} />}
+
+      <NotificationsSidebar
+        open={notificationsOpen}
+        onOpenChange={setNotificationsOpen}
+        onOpenBooking={openTracking}
+      />
 
       {showTrainingCelebration && (
         <TrainingCompleteModal
