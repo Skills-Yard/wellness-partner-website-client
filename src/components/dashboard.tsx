@@ -72,17 +72,21 @@ export default function DashboardContent() {
   switch (partner.status) {
     case "INCOMPLETE":
       screen = (
-        <OnboardingShell>
-          {(partner.onboardingStep ?? 1) < 2 ? <ProfileSetupFlow /> : <KycFlow />}
-        </OnboardingShell>
+        <>
+          <WizardShell>
+            {(partner.onboardingStep ?? 1) < 2 ? <ProfileSetupFlow /> : <KycFlow />}
+          </WizardShell>
+        </  
       );
       break;
 
     case "PENDING_KYC":
       screen = (
-        <OnboardingShell>
-          <KycFlow />
-        </OnboardingShell>
+        <OnboardingWizardProvider>
+          <WizardShell>
+            <KycFlow />
+          </WizardShell>
+        </OnboardingWizardProvider>
       );
       break;
 
@@ -92,7 +96,13 @@ export default function DashboardContent() {
     // DesktopDocumentsUnderReview). Mobile keeps its own dedicated
     // full-screen version exactly as it already was.
     case "KYC_SUBMITTED":
-      screen = (
+      screen = isDesktop ? (
+        <OnboardingWizardProvider>
+          <OnboardingWizardShell topBar>
+            <DesktopDocumentsUnderReview />
+          </OnboardingWizardShell>
+        </OnboardingWizardProvider>
+      ) : (
         <OnboardingShell>
           <DocumentsUnderReviewScreen />
         </OnboardingShell>
