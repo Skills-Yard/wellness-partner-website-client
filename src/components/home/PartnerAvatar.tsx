@@ -3,12 +3,11 @@ import type { Partner } from "@/lib/api/types";
 /**
  * Shared circular avatar for the partner's profile photo — shows
  * partner.profilePhotoKey when set (despite the field name, this is
- * already a ready-to-use CDN URL by the time it reaches here: see
- * PersonalInfoTab's upload flow, which PATCHes the full
- * `${cdnDomain}/${r2Key}` string into that field), else falls back to
- * their name's initial. Used anywhere a pfp shows up — Sidebar, the Home
- * header, Topbar, and the Profile page itself — so all of them update
- * together.
+ * already a ready-to-use, cache-busted CDN URL by the time it reaches
+ * here: see PersonalInfoTab's upload flow, which PATCHes cdnUrl(r2Key)
+ * into that field), else falls back to their name's initial. Used
+ * anywhere a pfp shows up — Sidebar, the Home header, Topbar, and the
+ * Profile page itself — so all of them update together.
  *
  * `photoUrl` lets a caller override with a freshly-cropped local preview
  * before a refetch of `partner` lands (see DesktopProfilePage /

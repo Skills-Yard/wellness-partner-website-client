@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import * as partnerApi from "@/lib/api/partner";
 import { uploadKycFile } from "@/lib/api/upload";
+import { cdnUrl } from "@/lib/api/cdn";
 import { ApiError } from "@/lib/api/client";
 import ToggleSwitch from "./ToggleSwitch";
 import ImageCropModal from "./ImageCropModal";
@@ -243,32 +244,44 @@ function PersonalInformationCard({
   // ends up under a "kyc/" key prefix for what's actually a public profile
   // photo. Known, deliberate trade-off until a real endpoint exists.
   //
-  // Despite the name, profilePhotoKey is saved (below) as the full
-  // `${cdnDomain}/${r2Key}` URL, not a raw storage key — so it's directly
-  // browsable and PartnerAvatar can render it straight from `partner` after
-  // a refetch. photoPreviewUrl is only needed for the gap before that
-  // refetch lands: it shows the locally-cropped file immediately (lifted to
-  // DesktopProfilePage so the page header shows it too) instead of waiting
-  // on the network round trip.
+  // Despite the name, profilePhotoKey is saved (below) as the full CDN URL
+  // (cdnUrl(r2Key)), not a raw storage key — so it's directly browsable and
+  // PartnerAvatar can render it straight from `partner` after a refetch.
+  //
+  // The r2Key is deterministic (kyc/<partnerId>/images/profile-photo_v1.jpg
+  // every time) and R2 stores it `immutable, max-age=31536000`, so a
+  // re-upload overwrites the object but the edge/browser keep serving the
+  // old one — `bust: true` appends a ?v=<ts> so each save is a fresh URL.
+  // That also means the stored string changes on every upload, so avatar
+  // consumers actually re-render after onSaved().
+  //
+  // photoPreviewUrl covers only the gap before that refetch lands: it shows
+  // the locally-cropped file immediately (lifted to DesktopProfilePage so
+  // the page header shows it too) instead of waiting on the round trip.
   const handleCropConfirm = async (blob: Blob, previewUrl: string) => {
     setCropFile(null);
     setUploadingPhoto(true);
     setError(null);
     try {
-      const cdnDomain = process.env.NEXT_PUBLIC_CLOUDFLARE_CDN_DOMAIN;
       const croppedFile = new File([blob], "profile-photo.jpg", {
         type: "image/jpeg",
       });
       const r2Key = await uploadKycFile(croppedFile);
-      const profilePhotoUrl = `${cdnDomain?.replace(/\/$/, "")}/${r2Key.replace(/^\//, "")}`;
+      const profilePhotoUrl = cdnUrl(r2Key, { bust: true });
+      if (!profilePhotoUrl) {
+        throw new Error(
+          "Image CDN is not configured — set NEXT_PUBLIC_CLOUDFLARE_CDN_DOMAIN.",
+        );
+      }
       await partnerApi.updateProfile({
         profilePhotoKey: profilePhotoUrl,
       });
       onPhotoPreviewChange(previewUrl);
       await onSaved();
     } catch (err) {
+      // ApiError extends Error, so this also covers upload/PATCH failures.
       setError(
-        err instanceof ApiError
+        err instanceof Error
           ? err.message
           : "Could not upload photo. Please try again.",
       );

@@ -72,11 +72,11 @@ export default function DashboardContent() {
   switch (partner.status) {
     case "INCOMPLETE":
       screen = (
-        <>
+        <OnboardingWizardProvider>
           <WizardShell>
             {(partner.onboardingStep ?? 1) < 2 ? <ProfileSetupFlow /> : <KycFlow />}
           </WizardShell>
-        </  
+        </OnboardingWizardProvider>
       );
       break;
 
