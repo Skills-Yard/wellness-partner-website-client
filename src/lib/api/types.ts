@@ -245,6 +245,10 @@ export interface PartnerEmployee {
   specializations: string[];
   isActive: boolean;
   status: EmployeeStatus;
+  // Present on GET /partner/employees rows — set once an admin approves the
+  // employee, null until then.
+  approvedAt?: string | null;
+  approvedBy?: string | null;
   joinedAt: string;
 }
 
