@@ -1,5 +1,10 @@
 import { request, requestEnvelope, fetchAllPaginated } from "./client";
-import type { PartnerEmployee, PartnerKyc } from "./types";
+import type {
+  EmployeeTrainingProgress,
+  PartnerEmployee,
+  PartnerKyc,
+  TrainingStatus,
+} from "./types";
 
 export function getEmployees() {
   return fetchAllPaginated<PartnerEmployee>((page, limit) => `/partner/employees?page=${page}&limit=${limit}`);
@@ -74,4 +79,36 @@ export function getEmployeeKycUploadUrl(id: string, fileName: string, contentTyp
     method: "POST",
     body: { fileName, contentType },
   });
+}
+
+// ---- Employee training (owner-proxy) ----
+// The owning business completes an employee's post-KYC training here, or
+// shares the tokenised link below for the employee to do it themselves.
+
+export interface EmployeeTrainingResponse {
+  employee: { id: string; name: string; status: string };
+  courses: EmployeeTrainingProgress[];
+}
+
+export function getEmployeeTraining(id: string) {
+  return request<EmployeeTrainingResponse>(`/partner/employees/${id}/training`);
+}
+
+export function updateEmployeeCourseStatus(
+  id: string,
+  courseId: string,
+  status: TrainingStatus,
+  score?: number
+) {
+  return request<EmployeeTrainingProgress>(
+    `/partner/employees/${id}/training/${courseId}/status`,
+    { method: "PATCH", body: { status, score } }
+  );
+}
+
+export function createEmployeeTrainingLink(id: string) {
+  return request<{ token: string; url: string; expiresAt: string }>(
+    `/partner/employees/${id}/training/share-link`,
+    { method: "POST" }
+  );
 }

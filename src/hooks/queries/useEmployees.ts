@@ -80,3 +80,46 @@ export function useSubmitEmployeeKyc() {
     },
   });
 }
+
+/**
+ * One employee's assigned training courses + progress (owner-proxy view).
+ * Only meaningful once the employee's KYC is approved (status TRAINING or
+ * beyond); callers gate `enabled` on that.
+ */
+export function useEmployeeTraining(employeeId: string | null) {
+  return useQuery({
+    queryKey: queryKeys.employeeTraining(employeeId ?? "none"),
+    queryFn: () => employeesApi.getEmployeeTraining(employeeId as string),
+    enabled: !!employeeId,
+    staleTime: 30 * 1000,
+  });
+}
+
+export function useUpdateEmployeeCourse() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      courseId,
+      status,
+      score,
+    }: {
+      id: string;
+      courseId: string;
+      status: Parameters<typeof employeesApi.updateEmployeeCourseStatus>[2];
+      score?: number;
+    }) => employeesApi.updateEmployeeCourseStatus(id, courseId, status, score),
+    onSuccess: (_result, { id }) => {
+      // Completing the last mandatory course auto-approves the employee, so
+      // refresh both the training list and the employee row's status badge.
+      queryClient.invalidateQueries({ queryKey: queryKeys.employeeTraining(id) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.employees() });
+    },
+  });
+}
+
+export function useCreateEmployeeTrainingLink() {
+  return useMutation({
+    mutationFn: (id: string) => employeesApi.createEmployeeTrainingLink(id),
+  });
+}

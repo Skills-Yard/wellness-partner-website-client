@@ -18,4 +18,5 @@ export const queryKeys = {
   // cached KYC.
   employees: () => ["employees"] as const,
   employeeKyc: (id: string) => ["employees", id, "kyc"] as const,
+  employeeTraining: (id: string) => ["employees", id, "training"] as const,
 };

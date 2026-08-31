@@ -1,10 +1,12 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import {
   BadgeCheck,
   CalendarDays,
   CheckCircle2,
+  Copy,
+  Link2,
   Loader2,
   Pencil,
   Phone,
@@ -13,10 +15,19 @@ import {
   X,
 } from "lucide-react";
 import { Sheet, SheetClose, SheetContent } from "@/components/ui/sheet";
-import { useEmployeeKyc } from "@/hooks/queries/useEmployees";
+import {
+  useCreateEmployeeTrainingLink,
+  useEmployeeKyc,
+  useEmployeeTraining,
+  useUpdateEmployeeCourse,
+} from "@/hooks/queries/useEmployees";
+import { ApiError } from "@/lib/api/client";
 import type { PartnerEmployee, PartnerKyc } from "@/lib/api/types";
+import EmployeeCourseChecklist from "@/components/training/EmployeeCourseChecklist";
 import PartnerAvatar from "../PartnerAvatar";
 import { EMPLOYEE_STATUS_STYLE } from "./constants";
+
+const TRAINING_VISIBLE_STATUSES = ["TRAINING", "PENDING_APPROVAL", "APPROVED"];
 
 function formatDate(iso?: string | null) {
   if (!iso) return "—";
@@ -146,6 +157,127 @@ function KycSection({
 }
 
 /**
+ * Post-KYC training for one employee. The owning business either works
+ * through the courses here on the employee's behalf, or copies a 14-day
+ * link the employee opens themselves (they have no account). Completing the
+ * last mandatory course auto-approves the employee — the list + status
+ * badge refresh via react-query invalidation in the mutation hooks.
+ */
+function TrainingSection({ employee }: { employee: PartnerEmployee }) {
+  const enabled = TRAINING_VISIBLE_STATUSES.includes(employee.status);
+  const training = useEmployeeTraining(enabled ? employee.id : null);
+  const updateCourse = useUpdateEmployeeCourse();
+  const createLink = useCreateEmployeeTrainingLink();
+  const [linkUrl, setLinkUrl] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  if (!enabled) return null;
+
+  const courses = training.data?.courses ?? [];
+  const readOnly = employee.status === "APPROVED";
+  const mandatory = courses.filter((c) => c.course.isMandatory);
+  const remaining = mandatory.filter((c) => c.status !== "COMPLETED").length;
+
+  const handleShare = async () => {
+    setError(null);
+    try {
+      const res = await createLink.mutateAsync(employee.id);
+      setLinkUrl(res.url);
+      try {
+        await navigator.clipboard.writeText(res.url);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2500);
+      } catch {
+        /* clipboard blocked — the URL is shown below to copy by hand */
+      }
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Could not create a training link.");
+    }
+  };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-xs font-bold text-stone-700">Training</p>
+        {mandatory.length > 0 && (
+          <span className="text-[11px] font-bold text-[#C9851A]">
+            {mandatory.length - remaining}/{mandatory.length} done
+          </span>
+        )}
+      </div>
+
+      {training.isLoading ? (
+        <div className="flex items-center gap-2 text-xs text-stone-400">
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading courses…
+        </div>
+      ) : training.isError ? (
+        <p className="text-xs text-red-500">Could not load training courses.</p>
+      ) : (
+        <>
+          {readOnly && (
+            <div className="mb-2 flex items-center gap-1.5 rounded-lg bg-green-50 border border-green-200 px-2.5 py-1.5 text-[11px] font-semibold text-green-700">
+              <BadgeCheck className="h-3.5 w-3.5" /> Training complete — this member is active.
+            </div>
+          )}
+          {!readOnly && remaining === 0 && mandatory.length > 0 && (
+            <div className="mb-2 flex items-center gap-1.5 rounded-lg bg-green-50 border border-green-200 px-2.5 py-1.5 text-[11px] font-semibold text-green-700">
+              <CheckCircle2 className="h-3.5 w-3.5" /> All mandatory training done — activating…
+            </div>
+          )}
+
+          <EmployeeCourseChecklist
+            courses={courses}
+            readOnly={readOnly}
+            onComplete={async (courseId) => {
+              await updateCourse.mutateAsync({
+                id: employee.id,
+                courseId,
+                status: "COMPLETED",
+                score: 100,
+              });
+            }}
+          />
+
+          {!readOnly && (
+            <div className="mt-3">
+              <button
+                onClick={handleShare}
+                disabled={createLink.isPending}
+                className="w-full flex items-center justify-center gap-1.5 rounded-xl border border-stone-200 py-2 text-[11px] font-bold text-stone-600 hover:bg-stone-50 transition-colors cursor-pointer disabled:opacity-60"
+              >
+                {createLink.isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : copied ? (
+                  <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                ) : (
+                  <Link2 className="h-3.5 w-3.5" />
+                )}
+                {copied ? "Link copied" : `Copy training link for ${employee.name.split(" ")[0]}`}
+              </button>
+              {linkUrl && (
+                <div className="mt-1.5 flex items-center gap-1.5 rounded-lg bg-stone-50 border border-stone-200 px-2 py-1.5">
+                  <span className="flex-1 truncate text-[10px] text-stone-500">{linkUrl}</span>
+                  <button
+                    onClick={() => navigator.clipboard?.writeText(linkUrl)}
+                    className="shrink-0 text-stone-400 hover:text-stone-700 cursor-pointer"
+                    aria-label="Copy link"
+                  >
+                    <Copy className="h-3 w-3" />
+                  </button>
+                </div>
+              )}
+              <p className="mt-1 text-[10px] text-stone-400">Link works for 14 days. Anyone with it can complete this member&apos;s training.</p>
+            </div>
+          )}
+          {error && <p className="mt-1.5 text-[11px] text-red-500">{error}</p>}
+        </>
+      )}
+    </div>
+  );
+}
+
+/**
  * Right slide-in drawer with everything GET /partner/employees +
  * /partner/employees/:id/kyc return for one team member. Purely
  * presentational beyond its own KYC query — Edit / Remove / Submit-KYC are
@@ -238,6 +370,8 @@ export default function EmployeeDetailDrawer({
                 <p className="text-xs font-bold text-stone-700 mb-2">KYC</p>
                 <KycSection kyc={kyc} onSubmit={() => onSubmitKyc(employee)} />
               </div>
+
+              <TrainingSection employee={employee} />
             </div>
 
             <div className="border-t border-stone-100 p-4 shrink-0">
