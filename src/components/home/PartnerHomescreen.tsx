@@ -124,6 +124,12 @@ export default function PartnerHomescreen({
   const [checkingApproval, setCheckingApproval] = useState(false);
 
   const isApproved = partner.status === "APPROVED";
+  // A BUSINESS partner can build out its team (and submit each employee's KYC)
+  // as soon as its own KYC bundle is approved — i.e. from PENDING_APPROVAL
+  // onwards — rather than waiting for full partner approval. Every other
+  // manage destination stays gated on isApproved.
+  const businessKycApproved =
+    partner.type === "BUSINESS" && partner.kyc?.status === "APPROVED";
   // partner.totalBookings/completionRate come back 0 from the profile
   // endpoint regardless of actual history — derived from the real booking
   // list instead. See useBookingStats for why averageRating/totalReviews
@@ -168,7 +174,9 @@ export default function PartnerHomescreen({
   // already done by the time this component renders at all, so rewatching
   // it is never gated.
   const openSubView = (view: Exclude<SubView, null>) => {
-    if (view !== "training" && !isApproved) return;
+    const allowedBeforeApproval =
+      view === "training" || (view === "team" && businessKycApproved);
+    if (!isApproved && !allowedBeforeApproval) return;
     setSubView(view);
   };
 
@@ -260,6 +268,26 @@ export default function PartnerHomescreen({
             </div>
           )}
 
+          {/* Business owners can get a head start while the final review runs —
+              add the team now so every employee's KYC is reviewed in the same
+              pass as the business itself. */}
+          {!isApproved && businessKycApproved && (
+            <div className="rounded-2xl border border-[#F0DDBF] bg-[#FFF8EC] p-5 flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-bold text-stone-900">Set up your team</p>
+                <p className="text-xs text-stone-600 mt-1 leading-relaxed">
+                  Add the people who deliver services on your behalf and submit their KYC now — our team can review them alongside your application.
+                </p>
+              </div>
+              <button
+                onClick={() => openSubView("team")}
+                className="shrink-0 flex items-center gap-1.5 rounded-full bg-[#C9851A] text-white px-3.5 py-1.5 text-[11px] font-bold hover:bg-[#B67714] transition-colors cursor-pointer"
+              >
+                <Users className="h-3.5 w-3.5" /> Add team
+              </button>
+            </div>
+          )}
+
           {/* Stats — meaningless before approval, so only shown once live */}
           {isApproved && (
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -319,9 +347,9 @@ export default function PartnerHomescreen({
                 <ManageCard
                   icon={<Users className="h-5 w-5" />}
                   title="Team"
-                  description="Manage your team members and their slots"
+                  description="Add team members and submit their KYC"
                   onClick={() => openSubView("team")}
-                  locked={!isApproved}
+                  locked={!isApproved && !businessKycApproved}
                 />
               )}
               <ManageCard

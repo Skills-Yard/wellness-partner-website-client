@@ -122,7 +122,18 @@ export default function Sidebar({
           go: () => onOpenSubView("availability"),
         },
         ...(partner.type === "BUSINESS"
-          ? [{ key: "team" as const, label: "Team", icon: Users, locked: !isApproved, go: () => onOpenSubView("team") }]
+          ? [
+              {
+                key: "team" as const,
+                label: "Team",
+                icon: Users,
+                // Unlocked as soon as the business's own KYC is approved, so
+                // the owner can add employees + submit their KYC while the
+                // final partner review is still running.
+                locked: !isApproved && partner.kyc?.status !== "APPROVED",
+                go: () => onOpenSubView("team"),
+              },
+            ]
           : []),
         { key: "bank", label: "Bank account", icon: Landmark, locked: !isApproved, go: () => onOpenSubView("bank") },
         // Never locked — by the time the normal sidebar is showing at all
