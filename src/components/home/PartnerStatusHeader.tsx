@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Bell, MapPin, Star } from "lucide-react";
 import type { Partner } from "@/lib/api/types";
 import { useUnreadNotificationCount } from "@/hooks/queries/useNotifications";
@@ -22,8 +22,12 @@ import PartnerAvatar from "./PartnerAvatar";
  * The notification bell here is hidden on lg — desktop gets the persistent
  * Topbar bell instead (same drawer), so the two never show at once.
  */
-// Recomputed on every render (no need for a live-ticking clock here — the
-// hour only needs to be roughly right, not to the second).
+// Time-of-day greeting for the viewer's own timezone. new Date().getHours()
+// reads the local hour — but only once this runs in the browser; during
+// Next's server render it would use the host's timezone (UTC on most
+// deploys) and could disagree with the visitor. So this is only ever called
+// from the mount effect below, never during render, with an SSR-safe
+// fallback until then.
 function timeOfDayGreeting() {
   const hour = new Date().getHours();
   if (hour < 12) return "Good morning";
@@ -49,6 +53,23 @@ export default function PartnerStatusHeader({
   // that lands mid-bounce, rather than no-op'ing because the animation
   // class never actually changed.
   const [bounceKey, setBounceKey] = useState(0);
+
+  // Starts SSR-safe/timezone-neutral, then the effect swaps in the real
+  // time-of-day greeting for the viewer's own clock. Re-checked every
+  // minute so a tab left open across noon/5pm updates itself, but only
+  // re-renders when the wording actually changes.
+  const [greeting, setGreeting] = useState("Hello");
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- must be client-only; see timeOfDayGreeting's note on SSR timezone
+    setGreeting(timeOfDayGreeting());
+    const id = window.setInterval(() => {
+      setGreeting((prev) => {
+        const next = timeOfDayGreeting();
+        return prev === next ? prev : next;
+      });
+    }, 60_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   const firstName = (partner.name ?? "Partner").trim().split(/\s+/)[0] || "Partner";
 
@@ -78,7 +99,7 @@ export default function PartnerStatusHeader({
           <div className="min-w-0">
             <h1 className="flex items-center gap-1.5 text-lg sm:text-2xl font-extrabold text-stone-900 leading-tight min-w-0">
               <span className="truncate">
-                {timeOfDayGreeting()}, {firstName}!
+                {greeting}, {firstName}!
               </span>
               <span aria-hidden className="shrink-0">
                 👋

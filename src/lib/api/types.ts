@@ -224,6 +224,21 @@ export interface PartnerTrainingProgress {
   completedAt?: string | null;
 }
 
+// Same shape as PartnerTrainingProgress, scoped to a BUSINESS partner's
+// employee. Backs the owner-proxy Team training view and the tokenised
+// public employee-training page.
+export interface EmployeeTrainingProgress {
+  id: string;
+  employeeId: string;
+  courseId: string;
+  course: TrainingCourse;
+  status: TrainingStatus;
+  score?: number | null;
+  attempts: number;
+  startedAt?: string | null;
+  completedAt?: string | null;
+}
+
 export interface BankAccount {
   id: string;
   partnerId: string;
@@ -245,6 +260,10 @@ export interface PartnerEmployee {
   specializations: string[];
   isActive: boolean;
   status: EmployeeStatus;
+  // Present on GET /partner/employees rows — set once an admin approves the
+  // employee, null until then.
+  approvedAt?: string | null;
+  approvedBy?: string | null;
   joinedAt: string;
 }
 
