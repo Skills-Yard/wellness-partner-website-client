@@ -38,12 +38,18 @@ interface SidebarProps {
   partner: Partner;
   activeView: SidebarView;
   isApproved: boolean;
+  // Drives the Notifications item's active state — that drawer isn't a
+  // subView (see PartnerHomescreen's SubView type), so activeView alone
+  // never equals "notifications"; this is how the item still lights up
+  // while it's open.
+  notificationsOpen?: boolean;
   // Mandatory-training gate mode (see TrainingGateScreen) — the nav list
   // collapses to just "Training", every other destination is unreachable
   // until training is done rather than merely locked-looking.
   trainingOnly?: boolean;
   onNavigateTab: (tab: "home" | "money" | "profile") => void;
-  onOpenSubView: (view: "bookings" | "availability" | "team" | "bank" | "training" | "notifications") => void;
+  onOpenSubView: (view: "bookings" | "availability" | "team" | "bank" | "training") => void;
+  onOpenNotifications: () => void;
   onLogout: () => void;
 }
 
@@ -73,13 +79,19 @@ export default function Sidebar({
   partner,
   activeView,
   isApproved,
+  notificationsOpen = false,
   trainingOnly = false,
   onNavigateTab,
   onOpenSubView,
+  onOpenNotifications,
   onLogout,
 }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const { data: unreadCount = 0 } = useUnreadNotificationCount();
+  // See PartnerStatusHeader's identical bell — bumped on every click and
+  // used as the notifications icon's `key` below so the bell-bounce
+  // keyframe (globals.css) restarts clean even on a rapid second click.
+  const [bellBounceKey, setBellBounceKey] = useState(0);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- reading a one-time persisted preference on mount, not a render-loop hazard
@@ -119,7 +131,16 @@ export default function Sidebar({
         { key: "training", label: "Training", icon: GraduationCap, go: () => onOpenSubView("training") },
         // Never locked — KYC/training/approval updates all arrive as pushes
         // before a partner is APPROVED, so this has to stay reachable throughout.
-        { key: "notifications", label: "Notifications", icon: Bell, badge: unreadCount, go: () => onOpenSubView("notifications") },
+        {
+          key: "notifications",
+          label: "Notifications",
+          icon: Bell,
+          badge: unreadCount,
+          go: () => {
+            setBellBounceKey((k) => k + 1);
+            onOpenNotifications();
+          },
+        },
         { key: "money", label: "Money", icon: IndianRupee, go: () => onNavigateTab("money") },
         // Profile lives in Topbar's account menu (top-right, desktop-only)
         // instead of here now — that menu is reachable from every view,
@@ -171,7 +192,7 @@ export default function Sidebar({
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {items.map((item) => {
-          const isActive = activeView === item.key;
+          const isActive = item.key === "notifications" ? notificationsOpen : activeView === item.key;
           const Icon = item.icon;
           return (
             <button
@@ -180,6 +201,8 @@ export default function Sidebar({
               aria-disabled={item.locked}
               title={collapsed ? `${item.label}${item.locked ? " (unlocks once approved)" : ""}` : undefined}
               className={`w-full flex items-center rounded-xl text-sm font-semibold transition-all cursor-pointer ${
+                item.key === "notifications" ? "active:scale-[0.97]" : ""
+              } ${
                 collapsed ? "justify-center px-0 py-3" : "gap-3 px-3.5 py-2.5"
               } ${
                 item.locked
@@ -190,7 +213,10 @@ export default function Sidebar({
               }`}
             >
               <span className="relative shrink-0">
-                <Icon className="w-4.5 h-4.5" />
+                <Icon
+                  key={item.key === "notifications" ? bellBounceKey : undefined}
+                  className={`w-4.5 h-4.5 ${item.key === "notifications" ? "animate-bell-bounce" : ""}`}
+                />
                 {!!item.badge && (
                   <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#C9851A] text-[8px] font-bold text-white">
                     {item.badge > 9 ? "9+" : item.badge}

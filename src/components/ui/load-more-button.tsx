@@ -1,6 +1,6 @@
 "use client";
 
-// Matches the "Load more" affordance NotificationsPanel already shipped
+// Matches the "Load more" affordance NotificationsSidebar already shipped
 // (same classes) — extracted here so usePaginatedList-backed screens share
 // one implementation instead of re-copying the button each time.
 export function LoadMoreButton({

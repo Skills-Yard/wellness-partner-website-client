@@ -27,6 +27,7 @@ export default function TrainingGateScreen({ partner, onLogout }: { partner: Par
         trainingOnly
         onNavigateTab={() => {}}
         onOpenSubView={() => {}}
+        onOpenNotifications={() => {}}
         onLogout={onLogout}
       />
 
