@@ -14,7 +14,7 @@ import * as partnerApi from "@/lib/api/partner";
 import * as onboardingApi from "@/lib/api/onboarding";
 import * as catalogApi from "@/lib/api/catalog";
 import * as zonesApi from "@/lib/api/zones";
-import type { ServiceCategory, ServiceItem } from "@/lib/api/types";
+import type { ServiceCategory } from "@/lib/api/types";
 
 type Step = "SERVICE_AREA" | "PROFILE_SERVICES";
 
@@ -55,7 +55,6 @@ export default function ProfileSetupFlow() {
   const [agreed, setAgreed] = useState(false);
 
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
-  const [items, setItems] = useState<ServiceItem[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [showServiceSelect, setShowServiceSelect] = useState(false);
   const [serviceSearch, setServiceSearch] = useState("");
@@ -103,7 +102,6 @@ export default function ProfileSetupFlow() {
     catalogApi
       .getServiceItems(resolvedArea.zoneId)
       .then((serviceItems) => {
-        setItems(serviceItems);
         const byId = new Map<string, ServiceCategory>();
         serviceItems.forEach((item) => {
           const cat = item.subCategory?.category;
@@ -128,7 +126,6 @@ export default function ProfileSetupFlow() {
       })
       .catch(() => {
         setCategories([]);
-        setItems([]);
       })
       .finally(() => setCatalogLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -150,18 +147,6 @@ export default function ProfileSetupFlow() {
     setSubmitLoading(true);
     setSubmitError(null);
     try {
-      const serviceItemIds = items
-        .filter((item) => {
-          const categoryId = item.subCategory?.category?.id;
-          return categoryId !== undefined && selectedCategoryIds.includes(categoryId);
-        })
-        .map((item) => item.id);
-
-      if (serviceItemIds.length === 0) {
-        setSubmitError("We couldn't find any services under the categories you picked. Please choose different ones.");
-        return;
-      }
-
       // PATCH /profile with lat/lon triggers the backend's own zone
       // resolution + city/servingHexes persistence (PartnerService.update),
       // so the partner record ends up with the same area we resolved above.
@@ -170,7 +155,10 @@ export default function ProfileSetupFlow() {
         latitude: resolvedArea.latitude,
         longitude: resolvedArea.longitude,
       });
-      await onboardingApi.setServices(serviceItemIds);
+      // The backend expands these categoryIds into the concrete
+      // ServiceItems beneath them — a 400 comes back if the selection maps
+      // to no active items.
+      await onboardingApi.setServicesByCategory(selectedCategoryIds);
       // No more "check your earnings" screens between this and KYC —
       // profile + services are saved above, so this just re-fetches the
       // partner record (onboardingStep flips server-side) and the dashboard
