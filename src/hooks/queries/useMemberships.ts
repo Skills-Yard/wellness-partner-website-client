@@ -2,6 +2,10 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as membershipsApi from "@/lib/api/memberships";
+import {
+  confirmTeamAssignment,
+  getPendingTeamConfirmations,
+} from "@/lib/api/bookings";
 import { getAccessToken } from "@/lib/api/client";
 import type { BusinessMembershipStatus } from "@/lib/api/types";
 import { queryKeys } from "./queryKeys";
@@ -143,5 +147,40 @@ export function useRemoveMember() {
     mutationFn: ({ membershipId, reason }: { membershipId: string; reason?: string }) =>
       membershipsApi.removeMember(membershipId, reason),
     onSuccess: invalidate,
+  });
+}
+
+/**
+ * Business-side: team members who accepted a broadcasted job and are waiting
+ * for the business to confirm the assignment. Polls while any are pending —
+ * a job can time out or be auto-confirmed server-side with no push.
+ */
+export function usePendingTeamConfirmations(enabled = true) {
+  const accessToken = typeof window !== "undefined" ? getAccessToken() : null;
+  return useQuery({
+    queryKey: queryKeys.pendingTeamConfirmations(),
+    queryFn: getPendingTeamConfirmations,
+    enabled: enabled && !!accessToken,
+    staleTime: 5 * 1000,
+    refetchInterval: (query) =>
+      (query.state.data?.length ?? 0) > 0 ? 12 * 1000 : 45 * 1000,
+  });
+}
+
+export function useConfirmTeamAssignment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      bookingId,
+      employeePartnerId,
+    }: {
+      bookingId: string;
+      employeePartnerId: string;
+    }) => confirmTeamAssignment(bookingId, employeePartnerId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.pendingTeamConfirmations() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.bookings() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.upcomingBookings() });
+    },
   });
 }

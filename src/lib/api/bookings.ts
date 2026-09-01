@@ -31,9 +31,59 @@ export function getBooking(bookingId: string) {
   return request<Booking>(`/partner/bookings/${bookingId}`);
 }
 
+// A job that reached this partner as a member of a BUSINESS team is not won
+// outright — the accept records an EMPLOYEE_ACCEPTED offer and the business
+// then confirms exactly one. The backend signals that with this shape instead
+// of a Booking; see MatchmakingService.acceptBooking.
+export interface PendingBusinessConfirmation {
+  status: "PENDING_BUSINESS_CONFIRMATION";
+  assignment: {
+    id: string;
+    bookingId: string;
+    businessPartnerId: string;
+    employeePartnerId: string;
+    status: string;
+  };
+}
+
 export function acceptBooking(bookingId: string) {
-  return request<Booking>(`/partner/bookings/${bookingId}/accept`, {
+  return request<Booking | PendingBusinessConfirmation>(
+    `/partner/bookings/${bookingId}/accept`,
+    { method: "POST" },
+  );
+}
+
+export function isPendingBusinessConfirmation(
+  result: Booking | PendingBusinessConfirmation,
+): result is PendingBusinessConfirmation {
+  return (
+    "status" in result && result.status === "PENDING_BUSINESS_CONFIRMATION"
+  );
+}
+
+// ---- Business side: confirm a team member onto a broadcasted booking ----
+
+export interface PendingTeamConfirmation {
+  id: string;
+  bookingId: string;
+  businessPartnerId: string;
+  employeePartnerId: string;
+  status: string;
+  employeeAcceptedAt: string | null;
+  employeePartner: { id: string; name?: string | null; profilePhotoKey?: string | null };
+  booking: Booking;
+}
+
+export function getPendingTeamConfirmations() {
+  return request<PendingTeamConfirmation[]>(
+    "/partner/bookings/team/pending-confirmations",
+  );
+}
+
+export function confirmTeamAssignment(bookingId: string, employeePartnerId: string) {
+  return request<Booking>(`/partner/bookings/${bookingId}/confirm-assignment`, {
     method: "POST",
+    body: { employeePartnerId },
   });
 }
 

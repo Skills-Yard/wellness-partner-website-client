@@ -131,8 +131,12 @@ function BookingRow({
             <button
               onClick={() =>
                 run("accept", async () => {
-                  await bookingsApi.acceptBooking(booking.id);
-                  onOpenTracking(booking.id);
+                  const result = await bookingsApi.acceptBooking(booking.id);
+                  // Team-member accept: the business still has to confirm us,
+                  // so there's no booking to track yet.
+                  if (!bookingsApi.isPendingBusinessConfirmation(result)) {
+                    onOpenTracking(booking.id);
+                  }
                 })
               }
               disabled={busy !== null}

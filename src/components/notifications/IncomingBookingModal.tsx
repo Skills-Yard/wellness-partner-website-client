@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2, MapPin, IndianRupee, Sparkles } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { acceptBooking, rejectBooking } from "@/lib/api/bookings";
+import { acceptBooking, isPendingBusinessConfirmation, rejectBooking } from "@/lib/api/bookings";
 import { ApiError } from "@/lib/api/client";
 import { useIncomingBroadcasts } from "@/hooks/queries/useIncomingBroadcasts";
 import { queryKeys } from "@/hooks/queries/queryKeys";
@@ -74,7 +74,7 @@ function OfferPrompt({
   onAccepted?: (bookingId: string) => void;
 }) {
   const queryClient = useQueryClient();
-  const [step, setStep] = useState<"offer" | "reason">("offer");
+  const [step, setStep] = useState<"offer" | "reason" | "awaiting-confirmation">("offer");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [customReason, setCustomReason] = useState("");
@@ -85,8 +85,14 @@ function OfferPrompt({
     setBusy(true);
     setError(null);
     try {
-      await acceptBooking(broadcast.bookingId);
+      const result = await acceptBooking(broadcast.bookingId);
       await refresh();
+      // Offered as part of a business's team: the job isn't ours yet — the
+      // business still has to confirm us onto it.
+      if (isPendingBusinessConfirmation(result)) {
+        setStep("awaiting-confirmation");
+        return;
+      }
       onAccepted?.(broadcast.bookingId);
     } catch (err) {
       // Surface the backend's actual reason instead of assuming — a 409 here
@@ -118,6 +124,29 @@ function OfferPrompt({
   const serviceNames = booking.items.map((item) => item.serviceItemName).join(", ") || "Service booking";
   const earning = booking.partnerEarning.toFixed(0);
   const address = [booking.address.city, booking.address.pincode].filter(Boolean).join(" · ");
+
+  if (step === "awaiting-confirmation") {
+    return (
+      <div className="px-6 py-8 text-center">
+        <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#FDF3E7] text-[#C9851A]">
+          <Loader2 className="h-5 w-5 animate-spin" />
+        </span>
+        <h2 className="mt-3 text-base font-extrabold text-stone-900">
+          Waiting for your business
+        </h2>
+        <p className="mt-1 text-xs text-stone-500 leading-relaxed">
+          You&apos;ve accepted this job. Your business needs to confirm you onto it —
+          you&apos;ll be notified as soon as they do.
+        </p>
+        <button
+          onClick={refresh}
+          className="mt-4 rounded-xl border border-stone-200 px-4 py-2 text-xs font-bold text-stone-600 hover:bg-stone-50 transition-colors cursor-pointer"
+        >
+          Done
+        </button>
+      </div>
+    );
+  }
 
   if (step === "reason") {
     return (

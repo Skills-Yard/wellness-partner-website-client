@@ -25,4 +25,5 @@ export const queryKeys = {
   memberships: () => ["memberships"] as const,
   team: (status?: string) => ["team", status ?? "all"] as const,
   joinCode: () => ["team", "join-code"] as const,
+  pendingTeamConfirmations: () => ["team", "pending-confirmations"] as const,
 };

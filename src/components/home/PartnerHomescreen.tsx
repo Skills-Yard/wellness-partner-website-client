@@ -25,6 +25,7 @@ import MembershipsPanel from "./panels/MembershipsPanel";
 import BankAccountPanel from "./panels/BankAccountPanel";
 import BookingTrackingPage from "./panels/BookingTrackingPage";
 import EmployerBanner from "./EmployerBanner";
+import PendingConfirmationsCard from "./PendingConfirmationsCard";
 import NotificationsSidebar from "../notifications/NotificationsSidebar";
 import type { Partner } from "@/lib/api/types";
 
@@ -264,6 +265,9 @@ export default function PartnerHomescreen({
               onOpen={() => openSubView("memberships")}
             />
           )}
+
+          {/* BUSINESS: team members waiting to be confirmed onto a job. */}
+          {isApproved && partner.type === "BUSINESS" && <PendingConfirmationsCard />}
 
           {/* Today's progress + live booking mini-tracker — only meaningful once bookings can actually flow in */}
           {isApproved && <TodayActivity onOpenBooking={openTracking} />}
