@@ -28,6 +28,7 @@ import { EMPLOYEE_STATUS_STYLE } from "../team/constants";
 import EmployeeFormModal from "../team/EmployeeFormModal";
 import EmployeeKycModal from "../team/EmployeeKycModal";
 import EmployeeDetailDrawer from "../team/EmployeeDetailDrawer";
+import TeamMembershipsSection from "../team/TeamMembershipsSection";
 
 const PAGE_SIZE = 8;
 
@@ -463,8 +464,19 @@ export default function TeamPanel({ onBack }: { onBack: () => void }) {
           />
         </div>
 
+        {/* Login-capable team members (BusinessMembership) — invites, join
+            requests, and active accounts. */}
+        <TeamMembershipsSection />
+
+        {/* Managed staff (PartnerEmployee) — non-login people the business
+            submits KYC/training for on their behalf. */}
+        <h3 className="mt-8 text-base font-extrabold text-stone-900">Managed staff</h3>
+        <p className="text-xs text-stone-500 mt-0.5">
+          People who don&apos;t log in — you handle their KYC and training.
+        </p>
+
         {/* Table card */}
-        <div className="mt-5 rounded-xl border border-stone-200/70 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+        <div className="mt-3 rounded-xl border border-stone-200/70 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
           <div className="p-4 flex flex-wrap items-center gap-3">
             <div className="relative flex-1 min-w-55 max-w-md">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
