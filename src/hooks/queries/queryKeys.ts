@@ -19,4 +19,10 @@ export const queryKeys = {
   employees: () => ["employees"] as const,
   employeeKyc: (id: string) => ["employees", id, "kyc"] as const,
   employeeTraining: (id: string) => ["employees", id, "training"] as const,
+  // Business-employee membership. `memberships` is the caller's own
+  // employee-side inbox; `team` is the business-side roster; `joinCode` is
+  // the (lazily minted) code a business hands out.
+  memberships: () => ["memberships"] as const,
+  team: (status?: string) => ["team", status ?? "all"] as const,
+  joinCode: () => ["team", "join-code"] as const,
 };

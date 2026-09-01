@@ -373,6 +373,65 @@ export interface Partner {
   // below where accuracy matters — see useBookingStats's doc comment for why
   // totalBookings/completionRate specifically come back stale/zero.
   _count?: { employees: number; bookings: number; reviews: number };
+  // Businesses this partner is an ACTIVE team member of (GET /partner/profile
+  // enriches the row with this). Empty for everyone who isn't on a team — a
+  // non-empty array is what the app keys "you're an employee of X" off.
+  employers?: EmployerLink[];
+}
+
+export interface EmployerLink {
+  membershipId: string;
+  businessId: string;
+  businessName?: string | null;
+  businessCode?: string | null;
+  role?: string | null;
+  since?: string | null;
+}
+
+// Mirror of the backend BusinessMembershipStatus / BusinessMembershipOrigin
+// enums (eezit-backend prisma/schema/enums.prisma).
+export type BusinessMembershipStatus =
+  | "PENDING_BUSINESS_APPROVAL"
+  | "PENDING_EMPLOYEE_APPROVAL"
+  | "ACTIVE"
+  | "REJECTED"
+  | "REVOKED"
+  | "LEFT";
+
+export type BusinessMembershipOrigin =
+  | "PARTNER_REQUEST"
+  | "BUSINESS_INVITE"
+  | "BUSINESS_CREATED"
+  | "ADMIN";
+
+interface PartnerMini {
+  id: string;
+  name?: string | null;
+  type?: PartnerType;
+  status?: PartnerStatus | EmployeeStatus;
+  profilePhotoKey?: string | null;
+  businessCode?: string | null;
+  city?: string | null;
+  /** Only present on the business-side team roster (employee rows). */
+  phone?: string | null;
+}
+
+export interface BusinessMembership {
+  id: string;
+  employeePartnerId: string;
+  businessPartnerId: string;
+  status: BusinessMembershipStatus;
+  origin: BusinessMembershipOrigin;
+  role?: string | null;
+  specializations: string[];
+  endReason?: string | null;
+  createdAt: string;
+  respondedAt?: string | null;
+  endedAt?: string | null;
+  // Included depending on which side asked: the employee inbox carries
+  // `businessPartner`, the business roster carries `employeePartner`.
+  businessPartner?: PartnerMini;
+  employeePartner?: PartnerMini;
 }
 
 // Backend NotificationType enum (prisma/schema/enums.prisma) — kept as a

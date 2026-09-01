@@ -21,8 +21,10 @@ import TrainingCompleteModal from "./TrainingCompleteModal";
 import BookingsPanel from "./panels/BookingsPanel";
 import AvailabilityPanel from "./panels/AvailabilityPanel";
 import TeamPanel from "./panels/TeamPanel";
+import MembershipsPanel from "./panels/MembershipsPanel";
 import BankAccountPanel from "./panels/BankAccountPanel";
 import BookingTrackingPage from "./panels/BookingTrackingPage";
+import EmployerBanner from "./EmployerBanner";
 import NotificationsSidebar from "../notifications/NotificationsSidebar";
 import type { Partner } from "@/lib/api/types";
 
@@ -42,7 +44,15 @@ interface PartnerHomescreenProps {
 // "notifications" isn't a SubView anymore — it's an overlay drawer
 // (NotificationsSidebar) that sits on top of whatever's already open, not a
 // destination that replaces `content`. See notificationsOpen below.
-type SubView = "bookings" | "availability" | "team" | "bank" | "training" | "tracking" | null;
+type SubView =
+  | "bookings"
+  | "availability"
+  | "team"
+  | "memberships"
+  | "bank"
+  | "training"
+  | "tracking"
+  | null;
 
 function StatCard({
   icon,
@@ -175,7 +185,9 @@ export default function PartnerHomescreen({
   // it is never gated.
   const openSubView = (view: Exclude<SubView, null>) => {
     const allowedBeforeApproval =
-      view === "training" || (view === "team" && businessKycApproved);
+      view === "training" ||
+      view === "memberships" ||
+      (view === "team" && businessKycApproved);
     if (!isApproved && !allowedBeforeApproval) return;
     setSubView(view);
   };
@@ -216,6 +228,8 @@ export default function PartnerHomescreen({
     content = <AvailabilityPanel partner={partner} onBack={() => setSubView(null)} />;
   } else if (subView === "team") {
     content = <TeamPanel onBack={() => setSubView(null)} />;
+  } else if (subView === "memberships") {
+    content = <MembershipsPanel onBack={() => setSubView(null)} />;
   } else if (subView === "bank") {
     content = <BankAccountPanel onBack={() => setSubView(null)} />;
   } else if (subView === "training") {
@@ -242,6 +256,15 @@ export default function PartnerHomescreen({
         <PartnerStatusHeader partner={partner} subtitle={homeSubtitle} onOpenNotifications={openNotifications} />
 
         <div className="flex-1 w-full max-w-[1600px] mx-auto px-4 sm:px-8 lg:px-10 py-6 flex flex-col gap-6">
+          {/* Informational only — being on a business's team doesn't change how
+              this partner's own bookings/availability/payouts work. */}
+          {(partner.employers?.length ?? 0) > 0 && (
+            <EmployerBanner
+              employers={partner.employers ?? []}
+              onOpen={() => openSubView("memberships")}
+            />
+          )}
+
           {/* Today's progress + live booking mini-tracker — only meaningful once bookings can actually flow in */}
           {isApproved && <TodayActivity onOpenBooking={openTracking} />}
 
@@ -350,6 +373,14 @@ export default function PartnerHomescreen({
                   description="Add team members and submit their KYC"
                   onClick={() => openSubView("team")}
                   locked={!isApproved && !businessKycApproved}
+                />
+              )}
+              {partner.type !== "BUSINESS" && (
+                <ManageCard
+                  icon={<Users className="h-5 w-5" />}
+                  title="Business memberships"
+                  description="Join a business team or manage invitations"
+                  onClick={() => openSubView("memberships")}
                 />
               )}
               <ManageCard

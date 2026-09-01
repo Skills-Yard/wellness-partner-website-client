@@ -24,6 +24,7 @@ export type SidebarView =
   | "bookings"
   | "availability"
   | "team"
+  | "memberships"
   | "bank"
   | "training"
   | "notifications"
@@ -48,7 +49,9 @@ interface SidebarProps {
   // until training is done rather than merely locked-looking.
   trainingOnly?: boolean;
   onNavigateTab: (tab: "home" | "money" | "profile") => void;
-  onOpenSubView: (view: "bookings" | "availability" | "team" | "bank" | "training") => void;
+  onOpenSubView: (
+    view: "bookings" | "availability" | "team" | "memberships" | "bank" | "training"
+  ) => void;
   onOpenNotifications: () => void;
   onLogout: () => void;
 }
@@ -134,7 +137,16 @@ export default function Sidebar({
                 go: () => onOpenSubView("team"),
               },
             ]
-          : []),
+          : [
+              {
+                // Individual partners can be on a business's team — never
+                // locked, an invite may land before full approval.
+                key: "memberships" as const,
+                label: "Memberships",
+                icon: Users,
+                go: () => onOpenSubView("memberships"),
+              },
+            ]),
         { key: "bank", label: "Bank account", icon: Landmark, locked: !isApproved, go: () => onOpenSubView("bank") },
         // Never locked — by the time the normal sidebar is showing at all
         // (PENDING_APPROVAL/APPROVED), mandatory training is already done,
