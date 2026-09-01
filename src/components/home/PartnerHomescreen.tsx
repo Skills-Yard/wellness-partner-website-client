@@ -11,6 +11,7 @@ import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 import PartnerStatusHeader from "./PartnerStatusHeader";
 import TodayActivity from "./TodayActivity";
+import NextBookingHighlight from "./NextBookingHighlight";
 import UpcomingBookingsCard from "./UpcomingBookingsCard";
 import EarningsOverviewCard from "./EarningsOverviewCard";
 import ProfilePage from "./ProfilePage";
@@ -271,6 +272,13 @@ export default function PartnerHomescreen({
 
           {/* Today's progress + live booking mini-tracker — only meaningful once bookings can actually flow in */}
           {isApproved && <TodayActivity onOpenBooking={openTracking} />}
+
+          {/* The partner's very next job, pulled up top so it's a dashboard
+              highlight rather than something buried below the stats/manage
+              grid. Renders nothing when there's no upcoming booking. */}
+          {isApproved && (
+            <NextBookingHighlight enabled={isApproved} onOpenBooking={openTracking} />
+          )}
 
           {/* This component only ever renders for PENDING_APPROVAL/APPROVED — TRAINING goes to
               TrainingGateScreen instead — so the only non-approved status left here is a final

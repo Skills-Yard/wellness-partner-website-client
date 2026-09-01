@@ -33,3 +33,39 @@ export function isBookingOverdue(
   if (!PRE_START_STATUSES.includes(booking.status)) return false;
   return getScheduledDateTime(booking) < now;
 }
+
+// scheduledTime is a plain 24h "HH:mm" wall-clock string — render it as
+// "h:mm AM/PM".
+export function formatWallClock12h(hhmm: string): string {
+  const [h, m] = hhmm.split(":").map(Number);
+  const period = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${String(m || 0).padStart(2, "0")} ${period}`;
+}
+
+/**
+ * Human "when" for a booking's scheduled slot: "Today, 3:00 PM" /
+ * "Tomorrow, 3:00 PM" / "Wed, Sep 3 · 3:00 PM". scheduledDate is a
+ * UTC-midnight instant standing in for a calendar date (see
+ * getScheduledDateTime), so its date part and weekday are read in UTC to
+ * avoid sliding a day in a positive-offset timezone.
+ */
+export function formatBookingWhen(
+  booking: Pick<Booking, "scheduledDate" | "scheduledTime">
+): string {
+  const datePart = booking.scheduledDate.slice(0, 10);
+  const today = new Date().toISOString().slice(0, 10);
+  const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+  const time = formatWallClock12h(booking.scheduledTime);
+
+  if (datePart === today) return `Today, ${time}`;
+  if (datePart === tomorrow) return `Tomorrow, ${time}`;
+
+  const label = new Date(booking.scheduledDate).toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+  return `${label} · ${time}`;
+}

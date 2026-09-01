@@ -3,6 +3,7 @@
 import React from "react";
 import { CalendarClock, ChevronRight } from "lucide-react";
 import { useUpcomingBookings } from "@/hooks/queries/useBookings";
+import { formatBookingWhen } from "@/lib/bookingSchedule";
 import { Shimmer } from "@/components/ui/shimmer";
 import type { Booking, BookingStatus } from "@/lib/api/types";
 
@@ -13,34 +14,6 @@ const STATUS_CHIP: Partial<Record<BookingStatus, { label: string; cls: string }>
 
 function serviceName(booking: Booking): string {
   return booking.items?.[0]?.serviceItemName ?? "Service booking";
-}
-
-function to12h(hhmm: string): string {
-  const [h, m] = hhmm.split(":").map(Number);
-  const period = h >= 12 ? "PM" : "AM";
-  const h12 = h % 12 === 0 ? 12 : h % 12;
-  return `${h12}:${String(m || 0).padStart(2, "0")} ${period}`;
-}
-
-// scheduledDate is a UTC-midnight instant standing in for a calendar date
-// (see bookingSchedule.ts); compare its date part, and format the weekday in
-// UTC so it doesn't slide a day in a positive-offset timezone.
-function formatWhen(booking: Booking): string {
-  const datePart = booking.scheduledDate.slice(0, 10);
-  const today = new Date().toISOString().slice(0, 10);
-  const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
-  const time = to12h(booking.scheduledTime);
-
-  if (datePart === today) return `Today, ${time}`;
-  if (datePart === tomorrow) return `Tomorrow, ${time}`;
-
-  const label = new Date(booking.scheduledDate).toLocaleDateString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
-  return `${label} · ${time}`;
 }
 
 /**
@@ -116,7 +89,7 @@ export default function UpcomingBookingsCard({
                       {serviceName(booking)}
                     </p>
                     <p className="text-[11px] text-stone-500 mt-0.5">
-                      {formatWhen(booking)} · You earn ₹{booking.partnerEarning.toFixed(0)}
+                      {formatBookingWhen(booking)} · You earn ₹{booking.partnerEarning.toFixed(0)}
                     </p>
                   </div>
                   {chip && (
