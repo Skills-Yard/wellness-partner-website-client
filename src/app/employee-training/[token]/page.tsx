@@ -7,6 +7,7 @@ import { ApiError } from "@/lib/api/client";
 import {
   EmployeeTrainingView,
   getEmployeeTrainingByToken,
+  markEmployeeLessonByToken,
   updateEmployeeTrainingByToken,
 } from "@/lib/api/employeeTraining";
 import EmployeeCourseChecklist from "@/components/training/EmployeeCourseChecklist";
@@ -47,16 +48,25 @@ export default function EmployeeTrainingPage() {
     load();
   }, [load]);
 
+  const applyResult = (res: Awaited<ReturnType<typeof updateEmployeeTrainingByToken>>) => {
+    setView((prev) =>
+      prev ? { ...prev, courses: res.courses as EmployeeTrainingProgress[], readOnly: res.readOnly } : prev
+    );
+    if (res.approved) setJustApproved(true);
+  };
+
   const handleComplete = async (courseId: string) => {
     try {
-      const res = await updateEmployeeTrainingByToken(token, courseId, "COMPLETED", 100);
-      setView((prev) =>
-        prev ? { ...prev, courses: res.courses as EmployeeTrainingProgress[], readOnly: res.readOnly } : prev
-      );
-      if (res.approved) setJustApproved(true);
+      applyResult(await updateEmployeeTrainingByToken(token, courseId, "COMPLETED", 100));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not save your progress. Please try again.");
     }
+  };
+
+  // Lets EmployeeCourseChecklist roll back its optimistic tick on failure —
+  // it catches, reverts, then calls onError.
+  const handleLessonComplete = async (courseId: string, lessonId: string) => {
+    applyResult(await markEmployeeLessonByToken(token, courseId, lessonId));
   };
 
   if (loading) {
@@ -146,7 +156,13 @@ export default function EmployeeTrainingPage() {
         </div>
       )}
 
-      <EmployeeCourseChecklist courses={view.courses} readOnly={view.readOnly} onComplete={handleComplete} />
+      <EmployeeCourseChecklist
+        courses={view.courses}
+        readOnly={view.readOnly}
+        onComplete={handleComplete}
+        onLessonComplete={handleLessonComplete}
+        onError={setError}
+      />
 
       {error && <p className="mt-3 text-xs font-medium text-red-500">{error}</p>}
     </Shell>

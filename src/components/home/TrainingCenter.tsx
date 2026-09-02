@@ -111,6 +111,13 @@ function CourseCard({
   const modules = progress.course.modules ?? [];
   const allLessons = modules.flatMap((m) => m.lessons ?? []);
   const completedCount = allLessons.filter((l) => completedLessonIds.has(l.id)).length;
+  // A module is "done" once every one of its lessons is — mirror the same
+  // client-side derivation the server uses, so the tick updates the instant
+  // the last lesson in a module completes (rather than after a refetch).
+  const isModuleDone = (module: (typeof modules)[number]) => {
+    const lessons = module.lessons ?? [];
+    return lessons.length > 0 && lessons.every((l) => completedLessonIds.has(l.id));
+  };
 
   return (
     <div className="rounded-2xl border border-stone-100 bg-white shadow-sm overflow-hidden">
@@ -145,7 +152,10 @@ function CourseCard({
             <div className="space-y-3">
               {modules.map((module) => (
                 <div key={module.id}>
-                  <p className="text-xs font-bold text-stone-700 mb-1.5">{module.title}</p>
+                  <p className="text-xs font-bold text-stone-700 mb-1.5 flex items-center gap-1.5">
+                    {isModuleDone(module) && <CheckCircle2 className="h-3 w-3 text-green-600 shrink-0" />}
+                    {module.title}
+                  </p>
                   <div className="space-y-1.5">
                     {(module.lessons ?? []).map((lesson) => (
                       <LessonRow
@@ -224,6 +234,9 @@ export default function TrainingCenter({ partner, onBack }: { partner: Partner; 
     try {
       const data = await trainingApi.getMyCourses();
       setCourses(data);
+      // Hydrate the lesson checklist from persisted progress so reloading the
+      // page doesn't wipe every tick (this state used to be session-only).
+      setCompletedLessonIds(new Set(data.flatMap((c) => c.completedLessonIds ?? [])));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not load your training courses.");
       setCourses([]);
@@ -262,20 +275,49 @@ export default function TrainingCenter({ partner, onBack }: { partner: Partner; 
     }
   };
 
-  const handleLessonComplete = (courseId: string, lessonId: string, lessonTitle: string) => {
+  const handleLessonComplete = async (courseId: string, lessonId: string, lessonTitle: string) => {
     if (completedLessonIds.has(lessonId)) return; // already counted — a re-watch shouldn't re-fire the toast
 
-    const nextCompleted = new Set(completedLessonIds);
-    nextCompleted.add(lessonId);
-    setCompletedLessonIds(nextCompleted);
+    // Optimistic tick — the video's `ended` event fires once, so reflect it
+    // immediately and roll back only if the server call fails.
+    setCompletedLessonIds((prev) => new Set(prev).add(lessonId));
     showAchievement("Lesson complete!", lessonTitle);
+    setError(null);
 
-    const progress = courses?.find((c) => c.courseId === courseId);
-    if (!progress || progress.status === "COMPLETED") return;
+    const wasDone = courses?.find((c) => c.courseId === courseId)?.status === "COMPLETED";
 
-    const allLessons = (progress.course.modules ?? []).flatMap((m) => m.lessons ?? []);
-    const allWatched = allLessons.length > 0 && allLessons.every((l) => nextCompleted.has(l.id));
-    if (allWatched) handleComplete(courseId);
+    try {
+      // The server records the lesson, rolls the module/course completion up,
+      // and returns the recomputed course row — swap it straight in.
+      const updated = await trainingApi.markLessonComplete(courseId, lessonId);
+
+      const nextCourses = (courses ?? []).map((c) => (c.courseId === courseId ? updated : c));
+      setCourses(nextCourses);
+      setCompletedLessonIds((prev) => {
+        const next = new Set(prev);
+        updated.completedLessonIds.forEach((id) => next.add(id));
+        return next;
+      });
+
+      if (updated.status === "COMPLETED" && !wasDone) {
+        showAchievement("Course complete! 🎓", updated.course.title);
+
+        const mandatory = nextCourses.filter((c) => c.course.isMandatory);
+        const remaining = mandatory.filter((c) => c.status !== "COMPLETED").length;
+        if (isGate && remaining === 0) {
+          window.sessionStorage.setItem(TRAINING_JUST_COMPLETED_KEY, "true");
+        }
+        // Applies the TRAINING -> PENDING_APPROVAL flip the server just made.
+        await refreshProfile();
+      }
+    } catch (err) {
+      setCompletedLessonIds((prev) => {
+        const next = new Set(prev);
+        next.delete(lessonId);
+        return next;
+      });
+      setError(err instanceof ApiError ? err.message : "Could not save your progress. Please try again.");
+    }
   };
 
   const handleCheckStatus = async () => {

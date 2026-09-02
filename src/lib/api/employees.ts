@@ -106,6 +106,16 @@ export function updateEmployeeCourseStatus(
   );
 }
 
+// Owner-proxy: mark one lesson of an employee's assigned course complete.
+// Same server-side roll-up as the partner/token endpoints (course
+// auto-completes + employee auto-approves once its last lesson lands).
+export function markEmployeeLesson(id: string, courseId: string, lessonId: string) {
+  return request<EmployeeTrainingProgress>(
+    `/partner/employees/${id}/training/${courseId}/lessons/${lessonId}`,
+    { method: "PATCH" }
+  );
+}
+
 export function createEmployeeTrainingLink(id: string) {
   return request<{ token: string; url: string; expiresAt: string }>(
     `/partner/employees/${id}/training/share-link`,

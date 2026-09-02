@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { CheckCircle2, ChevronDown, Loader2, PlayCircle } from "lucide-react";
 import type { EmployeeTrainingProgress, TrainingLesson } from "@/lib/api/types";
 
@@ -9,11 +9,14 @@ import type { EmployeeTrainingProgress, TrainingLesson } from "@/lib/api/types";
  *  - the owning business, proxy-completing from the Team drawer
  *  - the employee themselves, on the tokenised /employee-training/[token] page
  *
- * Both just hand it a course list and an `onComplete(courseId)` callback;
- * per-lesson "watched" state is tracked locally (session-only, same as the
- * partner's own TrainingCenter) and a course auto-completes once every one
- * of its lessons has been watched. `readOnly` disables all the actions once
- * the employee is already approved.
+ * Per-lesson completion is persisted server-side: `onLessonComplete` marks
+ * one lesson, and the backend rolls the module/course completion up (course
+ * auto-completes once its last lesson lands, which also auto-approves the
+ * employee). The `completedLessonIds` Set is seeded from each course's
+ * persisted `completedLessonIds` and kept in sync as the caller refreshes
+ * the list. `readOnly` disables all the actions once the employee is
+ * already approved. `onComplete` is still used for the manual
+ * "mark course as complete" button on lesson-less courses.
  */
 function LessonRow({
   lesson,
@@ -107,6 +110,10 @@ function CourseCard({
   const modules = progress.course.modules ?? [];
   const allLessons = modules.flatMap((m) => m.lessons ?? []);
   const completedCount = allLessons.filter((l) => completedLessonIds.has(l.id)).length;
+  const isModuleDone = (module: (typeof modules)[number]) => {
+    const lessons = module.lessons ?? [];
+    return lessons.length > 0 && lessons.every((l) => completedLessonIds.has(l.id));
+  };
 
   return (
     <div className="rounded-2xl border border-stone-100 bg-white shadow-sm overflow-hidden">
@@ -139,7 +146,10 @@ function CourseCard({
             <div className="space-y-3">
               {modules.map((m) => (
                 <div key={m.id}>
-                  <p className="text-xs font-bold text-stone-700 mb-1.5">{m.title}</p>
+                  <p className="text-xs font-bold text-stone-700 mb-1.5 flex items-center gap-1.5">
+                    {isModuleDone(m) && <CheckCircle2 className="h-3 w-3 text-green-600 shrink-0" />}
+                    {m.title}
+                  </p>
                   <div className="space-y-1.5">
                     {(m.lessons ?? []).map((lesson) => (
                       <LessonRow
@@ -176,20 +186,40 @@ export default function EmployeeCourseChecklist({
   courses,
   readOnly = false,
   onComplete,
+  onLessonComplete,
   onLessonWatched,
+  onError,
 }: {
   courses: EmployeeTrainingProgress[];
   readOnly?: boolean;
-  // Called when a course should be marked COMPLETED (all lessons watched, or
-  // the manual button for a lesson-less course). Returns a promise so the
-  // card can show a spinner.
+  // Manual "mark course as complete" button — only rendered for a course with
+  // no lessons at all. Returns a promise so the card can show a spinner.
   onComplete: (courseId: string) => Promise<void>;
+  // Persists one lesson as complete. The caller performs the API call and
+  // refreshes `courses` (react-query invalidation, or setView) so the server
+  // roll-up — module ticks, course auto-complete, employee auto-approve —
+  // flows back in. Throwing rolls back the optimistic tick.
+  onLessonComplete: (courseId: string, lessonId: string) => Promise<void>;
   // Optional: fired per lesson the first time it's watched, for a toast.
   onLessonWatched?: (lessonTitle: string) => void;
+  // Optional: surfaced when a lesson mark fails (after the tick is rolled back).
+  onError?: (message: string) => void;
 }) {
   const [expandedId, setExpandedId] = useState<string | null>(courses[0]?.courseId ?? null);
-  const [completedLessonIds, setCompletedLessonIds] = useState<Set<string>>(new Set());
   const [completingId, setCompletingId] = useState<string | null>(null);
+  // Lessons ticked this session but not yet reflected in the `courses` prop.
+  // The visible set is server truth ∪ these; a failed mark drops its id here.
+  const [optimisticIds, setOptimisticIds] = useState<Set<string>>(new Set());
+
+  const serverCompletedIds = useMemo(
+    () => new Set(courses.flatMap((c) => c.completedLessonIds ?? [])),
+    [courses]
+  );
+  const completedLessonIds = useMemo(() => {
+    const next = new Set(serverCompletedIds);
+    optimisticIds.forEach((id) => next.add(id));
+    return next;
+  }, [serverCompletedIds, optimisticIds]);
 
   const runComplete = async (courseId: string) => {
     setCompletingId(courseId);
@@ -200,18 +230,21 @@ export default function EmployeeCourseChecklist({
     }
   };
 
-  const handleLessonComplete = (courseId: string, lessonId: string, lessonTitle: string) => {
-    if (completedLessonIds.has(lessonId)) return;
-    const next = new Set(completedLessonIds);
-    next.add(lessonId);
-    setCompletedLessonIds(next);
+  const handleLessonComplete = async (courseId: string, lessonId: string, lessonTitle: string) => {
+    if (completedLessonIds.has(lessonId) || readOnly) return;
+
+    setOptimisticIds((prev) => new Set(prev).add(lessonId));
     onLessonWatched?.(lessonTitle);
 
-    const progress = courses.find((c) => c.courseId === courseId);
-    if (!progress || progress.status === "COMPLETED") return;
-    const allLessons = (progress.course.modules ?? []).flatMap((m) => m.lessons ?? []);
-    if (allLessons.length > 0 && allLessons.every((l) => next.has(l.id))) {
-      runComplete(courseId);
+    try {
+      await onLessonComplete(courseId, lessonId);
+    } catch (err) {
+      setOptimisticIds((prev) => {
+        const next = new Set(prev);
+        next.delete(lessonId);
+        return next;
+      });
+      onError?.(err instanceof Error ? err.message : "Could not save your progress. Please try again.");
     }
   };
 

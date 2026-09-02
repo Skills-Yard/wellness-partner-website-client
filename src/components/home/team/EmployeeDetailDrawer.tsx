@@ -19,6 +19,7 @@ import {
   useCreateEmployeeTrainingLink,
   useEmployeeKyc,
   useEmployeeTraining,
+  useMarkEmployeeLesson,
   useUpdateEmployeeCourse,
 } from "@/hooks/queries/useEmployees";
 import { ApiError } from "@/lib/api/client";
@@ -167,6 +168,7 @@ function TrainingSection({ employee }: { employee: PartnerEmployee }) {
   const enabled = TRAINING_VISIBLE_STATUSES.includes(employee.status);
   const training = useEmployeeTraining(enabled ? employee.id : null);
   const updateCourse = useUpdateEmployeeCourse();
+  const markLesson = useMarkEmployeeLesson();
   const createLink = useCreateEmployeeTrainingLink();
   const [linkUrl, setLinkUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -237,6 +239,10 @@ function TrainingSection({ employee }: { employee: PartnerEmployee }) {
                 score: 100,
               });
             }}
+            onLessonComplete={async (courseId, lessonId) => {
+              await markLesson.mutateAsync({ id: employee.id, courseId, lessonId });
+            }}
+            onError={setError}
           />
 
           {!readOnly && (

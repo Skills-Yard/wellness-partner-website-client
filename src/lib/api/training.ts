@@ -27,3 +27,17 @@ export function updateMyCourseStatus(courseId: string, status: TrainingStatus, s
     body: { status, score },
   });
 }
+
+// Mark one lesson of an assigned course complete. Idempotent server-side (a
+// re-watch no-ops). The backend rolls the completion up the tree: it records
+// the parent module as done once its last lesson lands, and auto-completes
+// the whole course (status -> COMPLETED, score = course.passingScore, then
+// the TRAINING -> PENDING_APPROVAL check) once the last lesson does. Returns
+// the recomputed progress row for that course, in the same shape as
+// getMyCourses — swap it straight into local state, no refetch needed.
+export function markLessonComplete(courseId: string, lessonId: string) {
+  return request<PartnerTrainingProgress>(
+    `/partner/training/${courseId}/lessons/${lessonId}`,
+    { method: "PATCH" }
+  );
+}

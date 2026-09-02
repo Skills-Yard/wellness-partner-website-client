@@ -118,6 +118,27 @@ export function useUpdateEmployeeCourse() {
   });
 }
 
+export function useMarkEmployeeLesson() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      courseId,
+      lessonId,
+    }: {
+      id: string;
+      courseId: string;
+      lessonId: string;
+    }) => employeesApi.markEmployeeLesson(id, courseId, lessonId),
+    onSuccess: (_result, { id }) => {
+      // Completing a course's last lesson auto-approves the employee, so
+      // refresh both the training list and the employee row's status badge.
+      queryClient.invalidateQueries({ queryKey: queryKeys.employeeTraining(id) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.employees() });
+    },
+  });
+}
+
 export function useCreateEmployeeTrainingLink() {
   return useMutation({
     mutationFn: (id: string) => employeesApi.createEmployeeTrainingLink(id),

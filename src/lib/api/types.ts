@@ -222,6 +222,14 @@ export interface PartnerTrainingProgress {
   attempts: number;
   startedAt?: string | null;
   completedAt?: string | null;
+  // Persisted per-lesson / per-module completion for this course (see
+  // PATCH /partner/training/:courseId/lessons/:lessonId). Present on every
+  // row from GET /partner/training so the Training Center hydrates its
+  // checklist on reload instead of starting blank. A module lands in
+  // completedModuleIds once all its lessons are done; the course
+  // auto-completes (status COMPLETED) once every lesson is.
+  completedLessonIds: string[];
+  completedModuleIds: string[];
 }
 
 // Same shape as PartnerTrainingProgress, scoped to a BUSINESS partner's
@@ -237,6 +245,10 @@ export interface EmployeeTrainingProgress {
   attempts: number;
   startedAt?: string | null;
   completedAt?: string | null;
+  // See PartnerTrainingProgress above — same per-lesson / per-module
+  // completion tracking, scoped to an employee.
+  completedLessonIds: string[];
+  completedModuleIds: string[];
 }
 
 export interface BankAccount {
