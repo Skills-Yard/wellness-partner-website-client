@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ArrowLeft,
   Calendar,
@@ -19,15 +19,11 @@ import {
 import * as bookingsApi from "@/lib/api/bookings";
 import { ApiError } from "@/lib/api/client";
 import { isBookingOverdue } from "@/lib/bookingSchedule";
+import { onPartnerSocketEvent } from "@/lib/socket/partnerSocket";
 import type { Booking, BookingStatus } from "@/lib/api/types";
 import StartServiceModal from "@/components/booking/StartServiceModal";
 import CancelBookingModal from "@/components/booking/CancelBookingModal";
 import DisputeBookingModal from "@/components/booking/DisputeBookingModal";
-
-// Mirrors TodayActivity's LIVE_STATUSES — kept polling while true so this
-// page doesn't go stale mid-job if the booking changes from elsewhere (the
-// client cancelling, an admin stepping in).
-const LIVE_STATUSES: BookingStatus[] = ["PARTNER_EN_ROUTE", "PARTNER_ARRIVED", "IN_PROGRESS"];
 
 // Same gating BookingsPanel used inline — mirrors the backend's own
 // (PaymentService.NON_CANCELLABLE_STATUSES / DISPUTABLE_STATUSES) so a
@@ -235,7 +231,6 @@ export default function BookingTrackingPage({
   const [booking, setBooking] = useState<Booking | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busyAction, setBusyAction] = useState<string | null>(null);
-  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const load = async () => {
     try {
@@ -253,16 +248,22 @@ export default function BookingTrackingPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- bookingId is the one identity that should ever re-trigger this
   }, [bookingId]);
 
-  // Same start/stop-while-live poll TodayActivity uses, keyed on status
-  // alone so it doesn't tear down and restart on every tick.
-  useEffect(() => {
-    if (!booking || !LIVE_STATUSES.includes(booking.status)) return;
-    pollIntervalRef.current = setInterval(load, 30000);
-    return () => {
-      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- deliberately keyed on status only, see comment above
-  }, [booking?.status]);
+  // Reload if the backend says this exact booking changed status for a
+  // reason that wasn't this partner's own action (see PartnerSocketGateway/
+  // PaymentService — cancel/dispute by the client). Every other transition
+  // this screen shows is the partner's own action, already reflected
+  // locally by runAction below — this is specifically the "changed behind
+  // your back" case a live-tracking screen otherwise has no way to learn
+  // about short of polling.
+  useEffect(
+    () =>
+      onPartnerSocketEvent("booking:status-changed", (...args) => {
+        const payload = args[0] as { bookingId?: string } | undefined;
+        if (payload?.bookingId === bookingId) load();
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- bookingId is the one identity that should ever re-trigger this
+    [bookingId],
+  );
 
   const runAction = async (key: string, fn: () => Promise<Booking>) => {
     setBusyAction(key);

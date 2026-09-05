@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Coffee, Clock3, Loader2, ChevronRight, AlertTriangle } from "lucide-react";
 import * as bookingsApi from "@/lib/api/bookings";
 import { ApiError } from "@/lib/api/client";
 import { isBookingOverdue } from "@/lib/bookingSchedule";
+import { onPartnerSocketEvent } from "@/lib/socket/partnerSocket";
 import type { Booking, BookingStatus } from "@/lib/api/types";
 
 // A booking counts as "live" once the partner is actively on it — en route,
@@ -162,21 +163,18 @@ function TodayProgressCard({
  * (`scheduledDate` filter) instead of walking the partner's entire booking
  * history and filtering client-side — this card only ever needs a handful
  * of rows, so a single bounded page (limit 100, comfortably above a day's
- * realistic booking count) replaces what used to be a full-history fetch
- * repeated on every mount and every 30s poll. Same fetch-on-mount pattern
- * as BookingsPanel/TrainingCenter elsewhere in this app; the only
- * difference here is a second effect that re-polls every 30s, but only
- * while a booking is actually live, so the card doesn't go stale mid-job
- * without the partner needing to manually reload. A full tracking page
- * (map, ETA, live updates) is later work — this is the stand-in until then,
- * so the polling is intentionally simple rather than a websocket.
+ * realistic booking count) replaces what used to be a full-history fetch.
+ * Same fetch-on-mount pattern as BookingsPanel/TrainingCenter elsewhere in
+ * this app; the only difference here is a realtime-socket subscription (see
+ * usePartnerRealtimeConnection) that reloads on booking:status-changed — a
+ * client cancelling or disputing while a booking is live is the one thing
+ * this card wouldn't otherwise learn about, since every other transition is
+ * the partner's own action and already reflected locally by whatever
+ * triggered it.
  */
 export default function TodayActivity({ onOpenBooking }: { onOpenBooking: (bookingId: string) => void }) {
   const [bookings, setBookings] = useState<Booking[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // Holds the polling interval's id so the second effect below can start
-  // and stop it as the live booking appears/disappears.
-  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const loadBookings = async () => {
     try {
@@ -197,20 +195,12 @@ export default function TodayActivity({ onOpenBooking }: { onOpenBooking: (booki
 
   const liveBooking = bookings?.find((b) => LIVE_STATUSES.includes(b.status)) ?? null;
 
-  // Start/stop the 30s poll as the live booking comes and goes. Keyed on
-  // just its id (not the whole liveBooking object, which is a new
-  // reference every fetch) so this doesn't tear down and restart the
-  // interval on every poll tick — only when the live booking actually
-  // changes or clears.
-  useEffect(() => {
-    if (!liveBooking) return;
-
-    pollIntervalRef.current = setInterval(loadBookings, 30000);
-    return () => {
-      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- deliberately keyed on liveBooking.id only, see comment above
-  }, [liveBooking?.id]);
+  // Reload whenever the backend says a booking of ours changed status for a
+  // reason that wasn't this partner's own action (see PartnerSocketGateway/
+  // PaymentService — cancel/dispute by the client). No id filtering: the
+  // event is rare enough that an extra reload of today's list is cheap, and
+  // it could affect the upcoming/missed buckets too, not just the live card.
+  useEffect(() => onPartnerSocketEvent("booking:status-changed", loadBookings), []);
 
   if (bookings === null) {
     return (
