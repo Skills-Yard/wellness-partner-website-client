@@ -1,5 +1,33 @@
 import { fetchAllPaginated, request, requestEnvelope } from "./client";
+import {
+  emitWithAck,
+  isPartnerSocketConnected,
+  SocketTransportError,
+} from "@/lib/socket/partnerSocket";
 import type { Booking, IncomingBroadcast, BookingStatus } from "./types";
+
+/**
+ * Every mutation below tries the realtime socket first (sub-second, when
+ * this tab has one connected) and falls back to the REST call only on a
+ * transport failure — a disconnect or a timed-out ack. A real business
+ * answer from the backend (booking already taken, wrong status, etc.)
+ * rejects as the same ApiError REST would have thrown and is never retried
+ * over REST, since the backend already processed the request once.
+ */
+async function viaSocketOrRest<T>(
+  event: string,
+  payload: unknown,
+  restCall: () => Promise<T>,
+): Promise<T> {
+  if (!isPartnerSocketConnected()) return restCall();
+
+  try {
+    return await emitWithAck<T>(event, payload);
+  } catch (err) {
+    if (err instanceof SocketTransportError) return restCall();
+    throw err;
+  }
+}
 
 export function getBookings() {
   return fetchAllPaginated<Booking>(
@@ -47,9 +75,14 @@ export interface PendingBusinessConfirmation {
 }
 
 export function acceptBooking(bookingId: string) {
-  return request<Booking | PendingBusinessConfirmation>(
-    `/partner/bookings/${bookingId}/accept`,
-    { method: "POST" },
+  return viaSocketOrRest<Booking | PendingBusinessConfirmation>(
+    "booking:accept",
+    { bookingId },
+    () =>
+      request<Booking | PendingBusinessConfirmation>(
+        `/partner/bookings/${bookingId}/accept`,
+        { method: "POST" },
+      ),
   );
 }
 
@@ -81,54 +114,85 @@ export function getPendingTeamConfirmations() {
 }
 
 export function confirmTeamAssignment(bookingId: string, employeePartnerId: string) {
-  return request<Booking>(`/partner/bookings/${bookingId}/confirm-assignment`, {
-    method: "POST",
-    body: { employeePartnerId },
-  });
+  return viaSocketOrRest<Booking>(
+    "booking:confirm-assignment",
+    { bookingId, employeePartnerId },
+    () =>
+      request<Booking>(`/partner/bookings/${bookingId}/confirm-assignment`, {
+        method: "POST",
+        body: { employeePartnerId },
+      }),
+  );
 }
 
 export function rejectBooking(bookingId: string, reason: string) {
-  return request<Booking>(`/partner/bookings/${bookingId}/reject`, {
-    method: "POST",
-    body: { reason },
-  });
+  return viaSocketOrRest<Booking>(
+    "booking:reject",
+    { bookingId, reason },
+    () =>
+      request<Booking>(`/partner/bookings/${bookingId}/reject`, {
+        method: "POST",
+        body: { reason },
+      }),
+  );
 }
 
 export function markEnRoute(bookingId: string) {
-  return request<Booking>(`/partner/bookings/${bookingId}/en-route`, {
-    method: "POST",
-  });
+  return viaSocketOrRest<Booking>("booking:en-route", { bookingId }, () =>
+    request<Booking>(`/partner/bookings/${bookingId}/en-route`, {
+      method: "POST",
+    }),
+  );
 }
 
 export function markArrived(bookingId: string) {
-  return request<Booking>(`/partner/bookings/${bookingId}/arrived`, {
-    method: "POST",
-  });
+  return viaSocketOrRest<Booking>("booking:arrived", { bookingId }, () =>
+    request<Booking>(`/partner/bookings/${bookingId}/arrived`, {
+      method: "POST",
+    }),
+  );
 }
 
 export function startBooking(bookingId: string, otp: string) {
-  return request<Booking>(`/partner/bookings/${bookingId}/start`, {
-    method: "POST",
-    body: { otp },
-  });
+  return viaSocketOrRest<Booking>(
+    "booking:start",
+    { bookingId, otp },
+    () =>
+      request<Booking>(`/partner/bookings/${bookingId}/start`, {
+        method: "POST",
+        body: { otp },
+      }),
+  );
 }
 
 export function completeBooking(bookingId: string) {
-  return request<Booking>(`/partner/bookings/${bookingId}/complete`, {
-    method: "POST",
-  });
+  return viaSocketOrRest<Booking>("booking:complete", { bookingId }, () =>
+    request<Booking>(`/partner/bookings/${bookingId}/complete`, {
+      method: "POST",
+    }),
+  );
 }
 
 export function cancelBooking(bookingId: string, reason: string) {
-  return request<Booking>(`/partner/bookings/${bookingId}/cancel`, {
-    method: "POST",
-    body: { reason },
-  });
+  return viaSocketOrRest<Booking>(
+    "booking:cancel",
+    { bookingId, reason },
+    () =>
+      request<Booking>(`/partner/bookings/${bookingId}/cancel`, {
+        method: "POST",
+        body: { reason },
+      }),
+  );
 }
 
 export function disputeBooking(bookingId: string, reason: string) {
-  return request<Booking>(`/partner/bookings/${bookingId}/dispute`, {
-    method: "POST",
-    body: { reason },
-  });
+  return viaSocketOrRest<Booking>(
+    "booking:dispute",
+    { bookingId, reason },
+    () =>
+      request<Booking>(`/partner/bookings/${bookingId}/dispute`, {
+        method: "POST",
+        body: { reason },
+      }),
+  );
 }

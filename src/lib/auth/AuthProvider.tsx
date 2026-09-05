@@ -6,6 +6,7 @@ import { setAccessToken, getAccessToken } from "@/lib/api/client";
 import * as authApi from "@/lib/api/auth";
 import * as partnerApi from "@/lib/api/partner";
 import { unregisterPushToken } from "@/lib/notifications/push";
+import { disconnectPartnerSocket } from "@/lib/socket/partnerSocket";
 import type { AuthTokens, Partner } from "@/lib/api/types";
 
 type SessionStatus = "loading" | "authenticated" | "unauthenticated";
@@ -47,6 +48,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // that authorizes it still exists — a signed-out browser shouldn't keep
     // receiving this partner's pushes.
     await unregisterPushToken();
+    // Same reasoning for the realtime socket — a signed-out browser
+    // shouldn't keep a live authenticated connection open.
+    disconnectPartnerSocket();
     try {
       await authApi.logout();
     } catch {

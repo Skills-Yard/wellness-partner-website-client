@@ -16,6 +16,7 @@ import BlockedScreen from "../components/status/BlockedScreen";
 import PartnerHomescreen from "./home/PartnerHomescreen";
 import TrainingGateScreen from "./home/TrainingGateScreen";
 import PushNotificationBootstrap from "./notifications/PushNotificationBootstrap";
+import PartnerRealtimeBootstrap from "./notifications/PartnerRealtimeBootstrap";
 import IncomingBookingModal from "./notifications/IncomingBookingModal";
 
 function FullScreenSpinner() {
@@ -147,6 +148,7 @@ export default function DashboardContent() {
           IncomingBookingModal's own polling is separately gated to APPROVED
           only, since on-demand broadcasts are never sent to anyone else. */}
       <PushNotificationBootstrap enabled />
+      <PartnerRealtimeBootstrap enabled />
       <IncomingBookingModal enabled={partner.status === "APPROVED"} onAccepted={setPendingTrackingBookingId} />
     </>
   );
